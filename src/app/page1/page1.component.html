@@ -1,0 +1,609 @@
+<div class="container">
+  <h2>Investment & Expense Tracker</h2>
+
+  <!-- Tab Navigation -->
+  <div class="tab-container">
+    <button 
+      class="tab-button"
+      [class.active]="activeTab === 'investments'"
+      (click)="switchTab('investments')">
+      Investments
+    </button>
+    <button 
+      class="tab-button"
+      [class.active]="activeTab === 'expenses'"
+      (click)="switchTab('expenses')">
+      Expenses
+    </button>
+    <button 
+      class="tab-button"
+      [class.active]="activeTab === 'income'"
+      (click)="switchTab('income')">
+      Monthly Income
+    </button>
+    <button 
+      class="tab-button"
+      [class.active]="activeTab === 'budget'"
+      (click)="switchTab('budget')">
+      Monthly Budget
+    </button>
+  </div>
+
+  <!-- Investment Tab -->
+  <div *ngIf="activeTab === 'investments'">
+    <form (ngSubmit)="addInvestment()" class="investment-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Investment Type:</label>
+          <select [(ngModel)]="newInvestment.type" name="type" required>
+            <option *ngFor="let type of investmentTypes" [value]="type">
+              {{ type }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>
+            Amount (₹):
+            <span *ngIf="newInvestment.type === 'PPF'" class="hint">- Monthly amount</span>
+            <span *ngIf="newInvestment.type === 'RD'" class="hint">- Monthly amount</span>
+            <span *ngIf="newInvestment.type === 'FD'" class="hint">- One-time amount</span>
+            <span *ngIf="newInvestment.type === 'Savings'" class="hint">- One-time amount</span>
+          </label>
+          <input
+            type="number"
+            [(ngModel)]="newInvestment.amount"
+            name="amount"
+            required
+            min="1"
+          />
+        </div>
+        <div class="form-group" *ngIf="newInvestment.type !== 'Savings'">
+          <label>Start Date:</label>
+          <input
+            type="date"
+            [(ngModel)]="newInvestment.startDate"
+            name="startDate"
+            required
+          />
+        </div>
+      </div>
+      <div class="form-row" *ngIf="newInvestment.type !== 'Savings'">
+        <div class="form-group" *ngIf="newInvestment.type !== 'PPF'">
+          <label>Duration (Months):</label>
+          <input
+            type="number"
+            [(ngModel)]="newInvestment.durationMonths"
+            name="durationMonths"
+            required
+            min="1"
+          />
+        </div>
+        <div class="form-group" *ngIf="newInvestment.type === 'PPF'">
+          <label>Duration:</label>
+          <input
+            type="text"
+            value="15 Years (Fixed)"
+            readonly
+            style="background-color: #f5f5f5"
+          />
+        </div>
+        <div class="form-group">
+          <label>Interest Rate (% per annum):</label>
+          <input
+            type="number"
+            [(ngModel)]="newInvestment.interestRate"
+            name="interestRate"
+            required
+            min="0"
+            max="50"
+            step="0.1"
+          />
+        </div>
+      </div>
+      <div class="btn-cnt">
+        <button class="addbutton" type="submit">Add Investment</button>
+        <button type="button" (click)="clearAllInvestments()" class="clear-btn">Clear All Investments</button>
+      </div>
+    </form>
+
+    <!-- Investment Chart -->
+    <div class="chart-container" *ngIf="investments.length > 0">
+      <h3 class="txt-clr">Investment Portfolio Distribution (Maturity Values)</h3>
+      <canvas
+        baseChart
+        [data]="pieChartData"
+        [type]="chartType"
+        style="max-height: 400px">
+      </canvas>
+    </div>
+
+    <!-- Investment Summary Table -->
+    <div *ngIf="investments.length > 0">
+      <h3>Investment Summary</h3>
+      <div class="table-responsive">
+        <table border="1" cellpadding="8">
+          <thead>
+            <tr>
+              <th>S.No</th>
+              <th>Investment Type</th>
+              <th>Start Date</th>
+              <th>End Date</th>
+              <th>Investment Amount</th>
+              <th>Current Value</th>
+              <th>Maturity Value</th>
+              <th>Interest Rate (%)</th>
+              <th>Invested So Far</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let inv of investments; let i = index">
+              <td>{{ i + 1 }}</td>
+              <td>{{ inv.type }}</td>
+              <td>{{ inv.startDate | date : "dd/MM/yyyy" }}</td>
+              <td>{{ getEndDateDisplay(inv) }}</td>
+              <td>
+                {{ getAmountDisplay(inv) }}
+                <div *ngIf="hasMonthlyBreakdown(inv)" class="monthly-breakdown">
+                  <small><strong>Monthly Investments:</strong></small>
+                  <div class="breakdown-list">
+                    <small *ngFor="let month of getMonthlyBreakdown(inv)">{{ month }}</small>
+                  </div>
+                </div>
+              </td>
+              <td class="currency">
+                ₹{{ getMaturityAndCurrentValue(inv).currentValue | number : "1.0-0" }}
+              </td>
+              <td class="currency">
+                ₹{{ getMaturityAndCurrentValue(inv).maturityValue | number : "1.0-0" }}
+              </td>
+              <td>{{ inv.interestRate }}%</td>
+              <td class="currency">
+                ₹{{ getMaturityAndCurrentValue(inv).investedSoFar | number : "1.0-0" }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="summary-section">
+        <h4>Total Invested by Type</h4>
+        <ul class="summary-list">
+          <li *ngFor="let key of objectKeys(totalByType)">
+            <strong>{{ key }}:</strong> ₹{{ totalByType[key] | number : "1.0-0" }}
+          </li>
+        </ul>
+        <div class="totals">
+          <h4>Portfolio Summary</h4>
+          <div class="total-item">
+            <strong>Total Invested So Far:</strong>
+            ₹{{ getTotalInvested() | number : "1.0-0" }}
+          </div>
+          <div class="total-item">
+            <strong>Total Current Value:</strong>
+            ₹{{ getTotalCurrentValue() | number : "1.0-0" }}
+          </div>
+          <div class="total-item">
+            <strong>Total Maturity Value:</strong>
+            ₹{{ getTotalMaturityValue() | number : "1.0-0" }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="investments.length === 0" class="no-investments">
+      <p>No investments added yet. Add your first investment using the form above.</p>
+    </div>
+  </div>
+
+  <!-- Expense Tab -->
+  <div *ngIf="activeTab === 'expenses'">
+    <form (ngSubmit)="addExpense()" class="expense-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Expense Category:</label>
+          <select [(ngModel)]="newExpense.category" name="category" required>
+            <option *ngFor="let category of expenseCategories" [value]="category">
+              {{ category }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Description:</label>
+          <input
+            type="text"
+            [(ngModel)]="newExpense.description"
+            name="description"
+            required
+            placeholder="Enter expense description"
+          />
+        </div>
+        <div class="form-group">
+          <label>Amount (₹):</label>
+          <input
+            type="number"
+            [(ngModel)]="newExpense.amount"
+            name="expenseAmount"
+            required
+            min="1"
+          />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date:</label>
+          <input
+            type="date"
+            [(ngModel)]="newExpense.date"
+            name="expenseDate"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label>Type:</label>
+          <select [(ngModel)]="newExpense.type" name="expenseType" required>
+            <option value="one-time">One-time</option>
+            <option value="monthly">Monthly Recurring</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-cnt">
+        <button class="expense-btn" type="submit">Add Expense</button>
+        <button type="button" (click)="clearAllExpenses()" class="clear-btn">Clear All Expenses</button>
+      </div>
+    </form>
+
+    <!-- NEW: Filter Toggle Button -->
+    <div class="filter-toggle-section">
+      <button class="filter-toggle-btn" (click)="toggleFilters()">
+        <i class="filter-icon">🔍</i>
+        <span>Filter Expenses</span>
+        <i class="toggle-icon">{{ showFilters ? '▲' : '▼' }}</i>
+      </button>
+    </div>
+
+    <!-- NEW: Collapsible Filter Section -->
+    <div class="filter-section" [class.expanded]="showFilters" *ngIf="showFilters">
+      <div class="filter-header">
+        <h3>Filter Expenses</h3>
+        <button class="clear-filters-btn" (click)="clearFilters()">
+          <i>✕</i> Clear Filters
+        </button>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Select Month:</label>
+          <input
+            type="month"
+            [(ngModel)]="expenseFilterMonth"
+            name="expenseFilterMonth"
+            (ngModelChange)="filterExpensesByMonth()"
+          />
+        </div>
+        <div class="form-group">
+          <label>Filter by Category:</label>
+          <select [(ngModel)]="expenseFilterCategory" name="expenseFilterCategory" (ngModelChange)="filterExpensesByMonth()">
+            <option value="">All Categories</option>
+            <option *ngFor="let category of expenseCategories" [value]="category">
+              {{ category }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Filter by Type:</label>
+          <select [(ngModel)]="expenseFilterType" name="expenseFilterType" (ngModelChange)="filterExpensesByMonth()">
+            <option value="">All Types</option>
+            <option value="monthly">Monthly</option>
+            <option value="one-time">One-time</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- NEW: Filtered Expense Summary (only shown when filters are active) -->
+    <div *ngIf="showFilters && filteredExpenses.length > 0" class="filtered-results">
+      <div class="filtered-header">
+        <h3>
+          Expense Details for {{ getMonthDisplay(expenseFilterMonth) }}
+          <span *ngIf="expenseFilterCategory" class="filter-tag">{{ expenseFilterCategory }}</span>
+          <span *ngIf="expenseFilterType" class="filter-tag">{{ expenseFilterType === 'monthly' ? 'Monthly' : 'One-time' }}</span>
+        </h3>
+      </div>
+      
+      <div class="expense-stats">
+        <div class="stat-item">
+          <span class="stat-label">Total Filtered Expenses:</span>
+          <span class="stat-value">₹{{ getFilteredExpenseTotal() | number : "1.0-0" }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Number of Transactions:</span>
+          <span class="stat-value">{{ filteredExpenses.length }}</span>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table border="1" cellpadding="8">
+          <thead>
+            <tr>
+              <th>S.No</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let expense of filteredExpenses; let i = index">
+              <td>{{ i + 1 }}</td>
+              <td>{{ expense.category }}</td>
+              <td>{{ expense.description }}</td>
+              <td class="currency">₹{{ expense.amount | number : "1.0-0" }}</td>
+              <td>{{ expense.date | date : "dd/MM/yyyy" }}</td>
+              <td>
+                <span class="expense-type" [class]="expense.type">
+                  {{ expense.type === 'monthly' ? 'Monthly' : 'One-time' }}
+                </span>
+              </td>
+              <td>
+                <button class="delete-btn" (click)="deleteExpense(expense.id)">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Category wise breakdown for filtered data -->
+      <div class="summary-section" *ngIf="filteredExpensesByCategory && objectKeys(filteredExpensesByCategory).length > 0">
+        <h4>Category-wise Breakdown (Filtered)</h4>
+        <div class="category-breakdown">
+          <div class="category-item" *ngFor="let key of objectKeys(filteredExpensesByCategory)">
+            <span class="category-name">{{ key }}:</span>
+            <span class="category-amount">₹{{ filteredExpensesByCategory[key] | number : "1.0-0" }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Expenses Summary -->
+    <div *ngIf="expenses.length > 0" class="all-expenses-section">
+      <h3>All Expenses Summary</h3>
+      <div class="table-responsive">
+        <table border="1" cellpadding="8">
+          <thead>
+            <tr>
+              <th>S.No</th>
+              <th>Category</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let expense of expenses; let i = index">
+              <td>{{ i + 1 }}</td>
+              <td>{{ expense.category }}</td>
+              <td>{{ expense.description }}</td>
+              <td class="currency">₹{{ expense.amount | number : "1.0-0" }}</td>
+              <td>{{ expense.date | date : "dd/MM/yyyy" }}</td>
+              <td>
+                <span class="expense-type" [class]="expense.type">
+                  {{ expense.type === 'monthly' ? 'Monthly' : 'One-time' }}
+                </span>
+              </td>
+              <td>
+                <button class="delete-btn" (click)="deleteExpense(expense.id)">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="summary-section">
+        <h4>Expense Summary by Category</h4>
+        <div class="category-breakdown">
+          <div class="category-item" *ngFor="let key of objectKeys(expensesByCategory)">
+            <span class="category-name">{{ key }}:</span>
+            <span class="category-amount">₹{{ expensesByCategory[key] | number : "1.0-0" }}</span>
+          </div>
+        </div>
+        <div class="totals">
+          <h4>Total Expenses</h4>
+          <div class="total-item">
+            <strong>Total One-time Expenses:</strong>
+            ₹{{ getTotalOneTimeExpenses() | number : "1.0-0" }}
+          </div>
+          <div class="total-item">
+            <strong>Total Monthly Expenses:</strong>
+            ₹{{ getTotalMonthlyExpenses() | number : "1.0-0" }}
+          </div>
+          <div class="total-item">
+            <strong>Total All Expenses:</strong>
+            ₹{{ getTotalExpenses() | number : "1.0-0" }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="expenses.length === 0" class="no-investments">
+      <p>No expenses added yet. Add your first expense using the form above.</p>
+    </div>
+  </div>
+
+  <!-- Monthly Income Tab -->
+  <div *ngIf="activeTab === 'income'">
+    <form (ngSubmit)="addIncome()" class="income-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Income Source:</label>
+          <select [(ngModel)]="newIncome.source" name="source" required>
+            <option *ngFor="let source of incomeSources" [value]="source">
+              {{ source }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Description:</label>
+          <input
+            type="text"
+            [(ngModel)]="newIncome.description"
+            name="incomeDescription"
+            required
+            placeholder="Enter income description"
+          />
+        </div>
+        <div class="form-group">
+          <label>Amount (₹):</label>
+          <input
+            type="number"
+            [(ngModel)]="newIncome.amount"
+            name="incomeAmount"
+            required
+            min="1"
+          />
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Date:</label>
+          <input
+            type="date"
+            [(ngModel)]="newIncome.date"
+            name="incomeDate"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label>Type:</label>
+          <select [(ngModel)]="newIncome.type" name="incomeType" required>
+            <option value="monthly">Monthly Salary</option>
+            <option value="one-time">One-time Income</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-cnt">
+        <button class="income-btn" type="submit">Add Income</button>
+        <button type="button" (click)="clearAllIncomes()" class="clear-btn">Clear All Incomes</button>
+      </div>
+    </form>
+
+    <!-- Income Summary -->
+    <div *ngIf="incomes.length > 0">
+      <h3>Income Summary</h3>
+      <div class="table-responsive">
+        <table border="1" cellpadding="8">
+          <thead>
+            <tr>
+              <th>S.No</th>
+              <th>Source</th>
+              <th>Description</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Type</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let income of incomes; let i = index">
+              <td>{{ i + 1 }}</td>
+              <td>{{ income.source }}</td>
+              <td>{{ income.description }}</td>
+              <td class="currency income-amount">₹{{ income.amount | number : "1.0-0" }}</td>
+              <td>{{ income.date | date : "dd/MM/yyyy" }}</td>
+              <td>
+                <span class="income-type" [class]="income.type">
+                  {{ income.type === 'monthly' ? 'Monthly' : 'One-time' }}
+                </span>
+              </td>
+              <td>
+                <button class="delete-btn" (click)="deleteIncome(income.id)">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="summary-section">
+        <h4>Income Summary by Source</h4>
+        <div class="category-breakdown">
+          <div class="category-item" *ngFor="let key of objectKeys(incomesBySource)">
+            <span class="category-name">{{ key }}:</span>
+            <span class="category-amount">₹{{ incomesBySource[key] | number : "1.0-0" }}</span>
+          </div>
+        </div>
+        <div class="totals">
+          <h4>Total Income</h4>
+          <div class="total-item">
+            <strong>Total Monthly Income:</strong>
+            ₹{{ getTotalMonthlyIncome() | number : "1.0-0" }}
+          </div>
+          <div class="total-item">
+            <strong>Total One-time Income:</strong>
+            ₹{{ getTotalOneTimeIncome() | number : "1.0-0" }}
+          </div>
+          <div class="total-item">
+            <strong>Total All Income:</strong>
+            ₹{{ getTotalIncome() | number : "1.0-0" }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="incomes.length === 0" class="no-investments">
+      <p>No income entries added yet. Add your first income using the form above.</p>
+    </div>
+  </div>
+
+ 
+<!-- Budget Tab -->
+<div *ngIf="activeTab === 'budget'">
+  <div class="budget-form">
+    <h3>Monthly Budget Overview</h3>
+    
+    <div class="form-row">
+      <div class="form-group">
+        <label>Select Month:</label>
+        <input
+          type="month"
+          [(ngModel)]="selectedMonth"
+          name="selectedMonth"
+          (ngModelChange)="updateBudgetSummary()"
+        />
+      </div>
+    </div>
+
+    <div class="budget-summary">
+      <h4>Budget Summary for {{ getMonthDisplay(selectedMonth) }}</h4>
+      
+      <div class="budget-grid">
+        <div class="budget-item income">
+          <h5>Monthly Income</h5>
+          <span class="amount">₹{{ getMonthlyIncomeForMonth(selectedMonth) | number : "1.0-0" }}</span>
+        </div>
+        <div class="budget-item expenses">
+          <h5>Monthly Expenses</h5>
+          <span class="amount">₹{{ getMonthlyExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
+        </div>
+        <div class="budget-item investments">
+          <h5>Monthly Investments</h5>
+          <span class="amount">₹{{ getMonthlyInvestmentsForMonth(selectedMonth) | number : "1.0-0" }}</span>
+        </div>
+        <div class="budget-item total-spend">
+          <h5>Total Monthly Spend</h5>
+          <span class="amount">₹{{ getTotalMonthlySpend() | number : "1.0-0" }}</span>
+        </div>
+        <div class="budget-item remaining" [class.negative]="getRemainingAmount() < 0">
+          <h5>Remaining Amount</h5>
+          <span class="amount">₹{{ getRemainingAmount() | number : "1.0-0" }}</span>
+        </div>
+      </div>
+
+      <div class="budget-chart" *ngIf="budgetChartData.datasets[0].data.length > 0">
+        <h4>Budget Distribution</h4>
+        <canvas
+          baseChart
+          [data]="budgetChartData"
+          [type]="'pie'"
+          style="max-height: 300px">
+        </canvas>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
