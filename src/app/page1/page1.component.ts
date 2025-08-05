@@ -381,8 +381,10 @@ export class Page1Component implements OnInit {
 
   getRemainingAmount(): number {
     return this.getMonthlyIncomeForMonth(this.selectedMonth) - 
-           this.getMonthlyExpensesForMonth(this.selectedMonth) - 
-           this.getMonthlyInvestmentsForMonth(this.selectedMonth);
+           this.getMonthlyExpensesForMonth(this.selectedMonth)
+          //   - 
+          //  this.getMonthlyInvestmentsForMonth(this.selectedMonth)
+           ;
   }
 
   getMonthDisplay(month: string): string {
