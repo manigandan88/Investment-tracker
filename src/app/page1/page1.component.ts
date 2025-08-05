@@ -28,6 +28,8 @@ export class Page1Component implements OnInit {
   // Expense properties
   expenseCategories = [
     'Food & Dining',
+    'Petrol',
+    'Teal & Coffee',
     'Transportation',
     'Shopping',
     'Entertainment',
@@ -695,8 +697,10 @@ getMonthlyBreakdown(investment: Investment): string[] {
            this.getMonthsElapsed(investment.startDate) > 0;
   }
   getTotalMonthlySpend(): number {
-  return this.getMonthlyExpensesForMonth(this.selectedMonth) + 
-         this.getMonthlyInvestmentsForMonth(this.selectedMonth);
+  return this.getMonthlyExpensesForMonth(this.selectedMonth) 
+  
+  // + 
+  //        this.getMonthlyInvestmentsForMonth(this.selectedMonth);
 }
 
 
