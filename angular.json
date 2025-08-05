@@ -49,7 +49,7 @@
                   "maximumError": "1mb"
                 }
               ],
-                 "baseHref": "./",
+                 "baseHref": "https://manigandan88.github.io/Investment-tracker/",
               "outputHashing": "all"
             },
             "development": {
