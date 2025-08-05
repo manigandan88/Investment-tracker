@@ -29,7 +29,7 @@ export class Page1Component implements OnInit {
   expenseCategories = [
     'Food & Dining',
     'Petrol',
-    'Teal & Coffee',
+    'Tea & Coffee ',
     'Transportation',
     'Shopping',
     'Entertainment',
