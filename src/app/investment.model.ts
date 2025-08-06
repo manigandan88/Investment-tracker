@@ -1,5 +1,4 @@
-// app/investment.model.ts
-export type InvestmentType = 'FD' | 'RD' | 'PPF' | 'Savings';
+// investment.model.ts
 
 export interface Investment {
   type: string;
@@ -15,18 +14,8 @@ export interface Expense {
   description: string;
   amount: number;
   date: Date;
-  type: 'monthly' | 'one-time'; // monthly for recurring, one-time for single expenses
+  type: 'one-time' | 'monthly';
 }
-
-export interface MonthlyBudget {
-  month: string; // Format: 'YYYY-MM'
-  totalIncome: number;
-  totalExpenses: number;
-  totalInvestments: number;
-  remainingAmount: number;
-  expenses: Expense[];
-}
-
 
 export interface MonthlyIncome {
   id: string;
@@ -35,4 +24,18 @@ export interface MonthlyIncome {
   amount: number;
   date: Date;
   type: 'monthly' | 'one-time';
+}
+
+export interface MonthlyBudget {
+  month: string;
+  income: number;
+  expenses: number;
+  investments: number;
+  remaining: number;
+}
+
+export interface SavingsEntry {
+  month: string;
+  amount: number;
+  source: 'remaining' | 'manual' | 'bonus';
 }
