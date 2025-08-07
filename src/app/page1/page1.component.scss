@@ -1426,3 +1426,172 @@ tr {
   border-top: 2px solid #ddd;
 }
 }
+
+/* Investment Table Actions Styling */
+.actions-column {
+  min-width: 150px;
+  text-align: center;
+}
+
+.edit-actions, .normal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+}
+
+.normal-actions {
+  flex-direction: row;
+  justify-content: center;
+}
+
+/* Button Styles */
+.edit-btn, .delete-btn, .save-btn, .cancel-btn {
+  padding: 5px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  min-width: 70px;
+}
+
+.edit-btn {
+  background-color: #5aad5d;
+  color: white;
+}
+
+.edit-btn:hover {
+  background-color: #14a018;
+  transform: translateY(-1px);
+}
+
+.delete-btn {
+  background-color: #da190b;
+  color: white;
+  margin-left: 5px;
+}
+
+.delete-btn:hover {
+  background-color: #da190b;
+  transform: translateY(-1px);
+}
+
+.save-btn {
+  background-color: #008CBA;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #007B9A;
+}
+
+.cancel-btn {
+  background-color: #666;
+  color: white;
+}
+
+.cancel-btn:hover {
+  background-color: #666;
+}
+
+/* Edit Input Styles */
+.edit-input {
+  width: 100%;
+  max-width: 120px;
+  padding: 4px 6px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.edit-input.small {
+  max-width: 80px;
+}
+
+.edit-input.readonly {
+  background-color: #f5f5f5;
+  color: #666;
+}
+
+.edit-select {
+  width: 100%;
+  max-width: 100px;
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+/* Editing Row Highlight */
+.editing-row {
+  background-color: #fff3cd !important;
+  border: 2px solid #ffc107;
+}
+
+.editing-row td {
+  border-color: #ffc107;
+}
+
+/* Duration Edit Field */
+.duration-edit {
+  margin-top: 5px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+
+.duration-edit label {
+  font-size: 10px;
+  font-weight: bold;
+  color: #666;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .actions-column {
+    min-width: 120px;
+  }
+  
+  .edit-actions, .normal-actions {
+    gap: 3px;
+  }
+  
+  .edit-btn, .delete-btn, .save-btn, .cancel-btn {
+    font-size: 10px;
+    padding: 3px 6px;
+    min-width: 50px;
+  }
+  
+  .edit-input {
+    font-size: 10px;
+    padding: 2px 4px;
+    max-width: 80px;
+  }
+}
+
+/* Action Buttons Animation */
+.edit-btn, .delete-btn, .save-btn, .cancel-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.edit-btn::before, .delete-btn::before, .save-btn::before, .cancel-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+}
+
+.edit-btn:hover::before, .delete-btn:hover::before, .save-btn:hover::before, .cancel-btn:hover::before {
+  width: 100px;
+  height: 100px;
+}

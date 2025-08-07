@@ -26,6 +26,16 @@ export class Page1Component implements OnInit {
     datasets: [{ data: [] }]
   };
 
+  // Edit mode properties
+  editingInvestmentIndex: number = -1;
+  editingInvestment: Investment = {
+    type: 'FD',
+    amount: 0,
+    startDate: new Date(),
+    durationMonths: 12,
+    interestRate: 0
+  };
+
   // Expense properties
   expenseCategories = [
     'Food & Dining',
@@ -88,9 +98,6 @@ export class Page1Component implements OnInit {
   // Budget and Savings properties
   activeTab: string = 'investments';
   selectedMonth: string = new Date().toISOString().substring(0, 7);
-  
-  // NEW: Savings properties
-  // currentSavings: number = 45000; // Initial savings amount
   savingsHistory: Array<{month: string, amount: number, source: string}> = [];
   
   budgetChartData: ChartData<'pie', number[], string | string[]> = {
@@ -107,16 +114,10 @@ export class Page1Component implements OnInit {
       this.expenseCategories.push('Investment');
     }
     
-    // Generate automatic investment expenses
     this.generateAutomaticInvestmentExpenses();
-    
     this.updateBudgetSummary();
     this.filterExpensesByMonth();
-    
-    // Set up periodic check for investment due dates
     this.setupPeriodicExpenseCheck();
-    
-    // Initialize auto-savings for current month
     this.autoSaveRemainingAmount();
   }
 
@@ -142,14 +143,126 @@ export class Page1Component implements OnInit {
     this.saveFilterSettings();
   }
 
+  // Investment Edit Methods
+  startEditInvestment(index: number) {
+    this.editingInvestmentIndex = index;
+    this.editingInvestment = { ...this.investments[index] };
+    console.log('Editing investment:', this.editingInvestment);
+  }
 
+  cancelEditInvestment() {
+    this.editingInvestmentIndex = -1;
+    this.editingInvestment = {
+      type: 'FD',
+      amount: 0,
+      startDate: new Date(),
+      durationMonths: 12,
+      interestRate: 0
+    };
+  }
+
+  saveEditInvestment() {
+    if (this.editingInvestmentIndex >= 0 && this.editingInvestmentIndex < this.investments.length) {
+      // Handle PPF duration
+      if (this.editingInvestment.type === 'PPF') {
+        this.editingInvestment.durationMonths = 180; // 15 years
+      }
+
+      // Update the investment
+      this.investments[this.editingInvestmentIndex] = { ...this.editingInvestment };
+      
+      // Regenerate auto expenses if it's a monthly investment
+      this.cleanupInactiveInvestmentExpenses();
+      if (this.editingInvestment.type === 'RD' || this.editingInvestment.type === 'PPF') {
+        this.generateAutomaticInvestmentExpenses();
+      }
+      
+      this.saveToLocal();
+      this.updateChart();
+      this.updateBudgetSummary();
+      this.autoSaveRemainingAmount();
+      
+      // Reset edit mode
+      this.cancelEditInvestment();
+      
+      alert('Investment updated successfully!');
+    }
+  }
+
+  deleteInvestment(index: number) {
+    const investment = this.investments[index];
+    const confirmMessage = `Are you sure you want to delete this ${investment.type} investment of ₹${investment.amount.toLocaleString()}?`;
+    
+    if (confirm(confirmMessage)) {
+      // Remove the investment
+      this.investments.splice(index, 1);
+      
+      // Clean up related auto-generated expenses
+      this.cleanupInactiveInvestmentExpenses();
+      
+      // Update everything
+      this.saveToLocal();
+      this.updateChart();
+      this.updateBudgetSummary();
+      this.autoSaveRemainingAmount();
+      
+      // Reset edit mode if we were editing this investment
+      if (this.editingInvestmentIndex === index) {
+        this.cancelEditInvestment();
+      } else if (this.editingInvestmentIndex > index) {
+        this.editingInvestmentIndex--;
+      }
+      
+      alert('Investment deleted successfully!');
+    }
+  }
+
+  isEditingInvestment(index: number): boolean {
+    return this.editingInvestmentIndex === index;
+  }
+
+  // Helper methods for investment editing
+  getInvestmentTypes(): string[] {
+    return this.investmentTypes;
+  }
+
+  isDurationEditable(investmentType: string): boolean {
+    return investmentType !== 'PPF' && investmentType !== 'Savings';
+  }
+
+  getDurationDisplayForEdit(investment: Investment): string {
+    if (investment.type === 'PPF') {
+      return '180'; // 15 years in months
+    }
+    return investment.durationMonths?.toString() || '12';
+  }
+
+  // Savings Methods (consolidated)
   getSavingsFromInvestments(): number {
-  return this.investments
-    .filter(inv => inv.type === 'Savings')
-   .reduce((sum: number, inv) => sum + inv.amount, 0);
-}
+    return this.investments
+      .filter(inv => inv.type === 'Savings')
+      .reduce((sum: number, inv) => sum + inv.amount, 0);
+  }
 
-  // NEW: Auto-savings methods
+  getCurrentMonthSavings(): number {
+    return this.savingsHistory
+      .filter(entry => entry.month === this.selectedMonth)
+      .reduce((sum, entry) => sum + entry.amount, 0);
+  }
+
+  getTotalSavings(): number {
+    const allAdditions = this.savingsHistory.reduce((sum, entry) => sum + entry.amount, 0);
+    return this.getSavingsFromInvestments() + allAdditions;
+  }
+
+  get savingsDisplay() {
+    return {
+      initial: this.getSavingsFromInvestments(),
+      currentMonth: this.getCurrentMonthSavings(),
+      total: this.getTotalSavings()
+    };
+  }
+
   autoSaveRemainingAmount() {
     const remainingAmount = this.getRemainingAmount();
     if (remainingAmount > 0) {
@@ -173,38 +286,6 @@ export class Page1Component implements OnInit {
     }
   }
 
-  getInitialSavings(): number {
-  return this.investments
-    .filter(inv => inv.type === 'Savings')
-    .reduce((sum, inv) => sum + inv.amount, 0);
-}
-
-  get savingsDisplay() {
-  return {
-    initial: this.getInitialSavings(),
-    currentMonth: this.getCurrentMonthSavings(),
-    total: this.getTotalSavings()
-  };
-}
-
-  // NEW: Get total savings (initial + current month addition)
-  getTotalSavings(): number {
-    // const currentMonthSaving = this.getCurrentMonthSavings();
-    // return this.getSavingsFromInvestments() + currentMonthSaving;
-      const allAdditions = this.savingsHistory.reduce((sum, entry) => sum + entry.amount, 0);
-  return this.getSavingsFromInvestments() + allAdditions;
-  }
-
-  // NEW: Get current month's savings addition
-  getCurrentMonthSavings(): number {
-    // const currentEntry = this.savingsHistory.find(entry => entry.month === this.selectedMonth);
-    // return currentEntry ? currentEntry.amount : 0;
-      return this.savingsHistory
-      .filter(entry => entry.month === this.selectedMonth)
-    .reduce((sum, entry) => sum + entry.amount, 0);
-  }
-
-  // NEW: Manually add remaining amount to savings
   addRemainingToSavings() {
     const remainingAmount = this.getRemainingAmount();
     if (remainingAmount > 0) {
@@ -241,7 +322,7 @@ export class Page1Component implements OnInit {
       interestRate: 0
     };
     this.updateBudgetSummary();
-    this.autoSaveRemainingAmount(); // Update savings
+    this.autoSaveRemainingAmount();
   }
 
   // Expense Methods
@@ -263,7 +344,7 @@ export class Page1Component implements OnInit {
       type: 'one-time'
     };
     this.updateBudgetSummary();
-    this.autoSaveRemainingAmount(); // Update savings
+    this.autoSaveRemainingAmount();
   }
 
   deleteExpense(expenseId: string) {
@@ -273,7 +354,7 @@ export class Page1Component implements OnInit {
       this.updateExpenseSummary();
       this.filterExpensesByMonth();
       this.updateBudgetSummary();
-      this.autoSaveRemainingAmount(); // Update savings
+      this.autoSaveRemainingAmount();
     }
   }
 
@@ -295,7 +376,7 @@ export class Page1Component implements OnInit {
       type: 'monthly'
     };
     this.updateBudgetSummary();
-    this.autoSaveRemainingAmount(); // Update savings
+    this.autoSaveRemainingAmount();
   }
 
   deleteIncome(incomeId: string) {
@@ -304,7 +385,7 @@ export class Page1Component implements OnInit {
       this.saveToLocal();
       this.updateIncomeSummary();
       this.updateBudgetSummary();
-      this.autoSaveRemainingAmount(); // Update savings
+      this.autoSaveRemainingAmount();
     }
   }
 
@@ -371,6 +452,7 @@ export class Page1Component implements OnInit {
     });
   }
 
+  // Consolidated total calculation methods
   getTotalOneTimeExpenses(): number {
     return this.expenses
       .filter(expense => expense.type === 'one-time')
@@ -403,7 +485,7 @@ export class Page1Component implements OnInit {
     return this.incomes.reduce((sum, income) => sum + income.amount, 0);
   }
 
-  // Budget Methods
+  // Budget Methods (consolidated monthly calculation logic)
   updateBudgetSummary() {
     const monthlyIncome = this.getMonthlyIncomeForMonth(this.selectedMonth);
     const monthlyExpenses = this.getMonthlyExpensesForMonth(this.selectedMonth);
@@ -427,41 +509,30 @@ export class Page1Component implements OnInit {
     this.autoSaveRemainingAmount();
   }
 
-  getMonthlyIncomeForMonth(month: string): number {
+  private calculateMonthlyAmount(items: any[], month: string, type: 'income' | 'expense'): number {
     const [year, monthNum] = month.split('-').map(Number);
     
-    
-    return this.incomes
-      .filter(income => {
-        if (income.type === 'monthly') {
-          const incomeDate = new Date(income.date);
-          return incomeDate.getFullYear() < year || 
-                 (incomeDate.getFullYear() === year && incomeDate.getMonth() <= monthNum - 1);
+    return items
+      .filter(item => {
+        if (item.type === 'monthly') {
+          const itemDate = new Date(item.date);
+          return itemDate.getFullYear() < year || 
+                 (itemDate.getFullYear() === year && itemDate.getMonth() <= monthNum - 1);
         } else {
-          const incomeDate = new Date(income.date);
-          return incomeDate.getFullYear() === year && 
-                 incomeDate.getMonth() === monthNum - 1;
+          const itemDate = new Date(item.date);
+          return itemDate.getFullYear() === year && 
+                 itemDate.getMonth() === monthNum - 1;
         }
       })
-      .reduce((sum, income) => sum + income.amount, 0);
+      .reduce((sum, item) => sum + item.amount, 0);
+  }
+
+  getMonthlyIncomeForMonth(month: string): number {
+    return this.calculateMonthlyAmount(this.incomes, month, 'income');
   }
 
   getMonthlyExpensesForMonth(month: string): number {
-    const [year, monthNum] = month.split('-').map(Number);
-    
-    return this.expenses
-      .filter(expense => {
-        if (expense.type === 'monthly') {
-          const expenseDate = new Date(expense.date);
-          return expenseDate.getFullYear() < year || 
-                 (expenseDate.getFullYear() === year && expenseDate.getMonth() <= monthNum - 1);
-        } else {
-          const expenseDate = new Date(expense.date);
-          return expenseDate.getFullYear() === year && 
-                 expenseDate.getMonth() === monthNum - 1;
-        }
-      })
-      .reduce((sum, expense) => sum + expense.amount, 0);
+    return this.calculateMonthlyAmount(this.expenses, month, 'expense');
   }
 
   getMonthlyInvestmentsForMonth(month: string): number {
@@ -481,13 +552,9 @@ export class Page1Component implements OnInit {
       .reduce((sum, investment) => sum + investment.amount, 0);
   }
 
-  // MODIFIED: getRemainingAmount method
   getRemainingAmount(): number {
     return this.getMonthlyIncomeForMonth(this.selectedMonth) - 
-           this.getMonthlyExpensesForMonth(this.selectedMonth)
-          //   - 
-          //  this.getMonthlyInvestmentsForMonth(this.selectedMonth)
-           ;
+           this.getMonthlyExpensesForMonth(this.selectedMonth);
   }
 
   getMonthDisplay(month: string): string {
@@ -497,13 +564,12 @@ export class Page1Component implements OnInit {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
   }
 
-  // UPDATED: Storage Methods with savings data
+  // Storage Methods
   saveToLocal() {
     const data = {
       investments: this.investments,
       expenses: this.expenses,
       incomes: this.incomes,
-      // currentSavings: this.getSavingsFromInvestments(),
       savingsHistory: this.savingsHistory,
       filterSettings: {
         showFilters: this.showFilters,
@@ -559,19 +625,19 @@ export class Page1Component implements OnInit {
           this.updateIncomeSummary();
         }
 
-        // NEW: Load savings data
+        // Load savings data (handle legacy currentSavings)
         if (parsed.currentSavings !== undefined) {
           if (this.getSavingsFromInvestments() === 0 && parsed.currentSavings > 0) {
-    this.investments.push({
-      type: 'Savings',
-      amount: parsed.currentSavings,
-      startDate: new Date(),
-      durationMonths: 0,
-      interestRate: 0
-    });
-    this.updateChart();
-  }
-}
+            this.investments.push({
+              type: 'Savings',
+              amount: parsed.currentSavings,
+              startDate: new Date(),
+              durationMonths: 0,
+              interestRate: 0
+            });
+            this.updateChart();
+          }
+        }
         if (parsed.savingsHistory) {
           this.savingsHistory = parsed.savingsHistory;
         }
@@ -590,6 +656,7 @@ export class Page1Component implements OnInit {
     }
   }
 
+  // Clear methods
   clearAllInvestments() {
     if (confirm('Are you sure you want to clear all investments? This will also remove auto-generated expenses.')) {
       this.expenses = this.expenses.filter(expense => !expense.id.startsWith('auto_'));
@@ -599,7 +666,7 @@ export class Page1Component implements OnInit {
       this.updateExpenseSummary();
       this.filterExpensesByMonth();
       this.updateBudgetSummary();
-      this.autoSaveRemainingAmount(); // Update savings
+      this.autoSaveRemainingAmount();
     }
   }
 
@@ -610,7 +677,7 @@ export class Page1Component implements OnInit {
       this.updateExpenseSummary();
       this.filterExpensesByMonth();
       this.updateBudgetSummary();
-      this.autoSaveRemainingAmount(); // Update savings
+      this.autoSaveRemainingAmount();
     }
   }
 
@@ -620,11 +687,11 @@ export class Page1Component implements OnInit {
       this.saveToLocal();
       this.updateIncomeSummary();
       this.updateBudgetSummary();
-      this.autoSaveRemainingAmount(); // Update savings
+      this.autoSaveRemainingAmount();
     }
   }
 
-  // Investment calculation methods (keeping all existing methods)
+  // Investment calculation methods
   invEndDate(start: Date, duration: number): Date {
     const result = new Date(start);
     result.setMonth(result.getMonth() + duration);
@@ -671,8 +738,8 @@ export class Page1Component implements OnInit {
         
         current = 0;
         for (let month = 1; month <= monthsElapsed; month++) {
-         const monthsEarningInterest = monthsElapsed - month;
-           current += investment.amount * Math.pow(1 + r/12, monthsEarningInterest);
+          const monthsEarningInterest = monthsElapsed - month;
+          current += investment.amount * Math.pow(1 + r/12, monthsEarningInterest);
         }
         
         maturity = 0;
@@ -693,16 +760,16 @@ export class Page1Component implements OnInit {
         current = 0;
         
         for (let year = 1; year <= yearsElapsedPPF; year++) {
-               const yearsEarningInterest = yearsElapsedPPF - year + 1;
-        current += yearlyContributions * Math.pow(1 + r, yearsEarningInterest);
+          const yearsEarningInterest = yearsElapsedPPF - year + 1;
+          current += yearlyContributions * Math.pow(1 + r, yearsEarningInterest);
         }
 
-           current += investment.amount * remainingMonths;
+        current += investment.amount * remainingMonths;
         
         maturity = 0;
-       for (let year = 1; year <= 15; year++) {
-           const yearsEarningInterest = 15 - year + 1;
-           maturity += yearlyContributions * Math.pow(1 + r, yearsEarningInterest);
+        for (let year = 1; year <= 15; year++) {
+          const yearsEarningInterest = 15 - year + 1;
+          maturity += yearlyContributions * Math.pow(1 + r, yearsEarningInterest);
         }
         break;
 
@@ -769,7 +836,7 @@ export class Page1Component implements OnInit {
   }
 
   getTotalInvested(): number {
-    return Object.keys(this.totalByType).reduce((sum, key) => sum + this.totalByType[key], 0) + this.getSavingsFromInvestments();;
+    return Object.keys(this.totalByType).reduce((sum, key) => sum + this.totalByType[key], 0) + this.getSavingsFromInvestments();
   }
 
   getTotalCurrentValue(): number {
@@ -780,38 +847,38 @@ export class Page1Component implements OnInit {
     return this.investments.reduce((sum, inv) => sum + this.getMaturityAndCurrentValue(inv).maturityValue, 0);
   }
 
-getMonthlyBreakdown(investment: Investment): string[] {
-  if (investment.type !== 'RD' && investment.type !== 'PPF') {
-    return [];
+  getMonthlyBreakdown(investment: Investment): string[] {
+    if (investment.type !== 'RD' && investment.type !== 'PPF') {
+      return [];
+    }
+
+    const breakdown: string[] = [];
+    const startDate = new Date(investment.startDate);
+    const today = new Date();
+
+    const dueDay = startDate.getDate();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    let current = new Date(startDate);
+
+    while (
+      current.getFullYear() < today.getFullYear() ||
+      (current.getFullYear() === today.getFullYear() && current.getMonth() < today.getMonth()) ||
+      (current.getFullYear() === today.getFullYear() &&
+       current.getMonth() === today.getMonth() &&
+       dueDay <= today.getDate())
+    ) {
+      const monthName = monthNames[current.getMonth()];
+      const year = current.getFullYear().toString().slice(-2);
+
+      breakdown.push(`${monthName} ${year}: ₹${investment.amount.toLocaleString()}`);
+
+      current.setMonth(current.getMonth() + 1);
+    }
+
+    return breakdown;
   }
-
-  const breakdown: string[] = [];
-  const startDate = new Date(investment.startDate);
-  const today = new Date();
-
-  const dueDay = startDate.getDate();
-  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-  let current = new Date(startDate);
-
-  while (
-    current.getFullYear() < today.getFullYear() ||
-    (current.getFullYear() === today.getFullYear() && current.getMonth() < today.getMonth()) ||
-    (current.getFullYear() === today.getFullYear() &&
-     current.getMonth() === today.getMonth() &&
-     dueDay <= today.getDate())
-  ) {
-    const monthName = monthNames[current.getMonth()];
-    const year = current.getFullYear().toString().slice(-2);
-
-    breakdown.push(`${monthName} ${year}: ₹${investment.amount.toLocaleString()}`);
-
-    current.setMonth(current.getMonth() + 1);
-  }
-
-  return breakdown;
-}
 
   hasMonthlyBreakdown(investment: Investment): boolean {
     return (investment.type === 'RD' || investment.type === 'PPF') && 
@@ -822,7 +889,7 @@ getMonthlyBreakdown(investment: Investment): string[] {
     return this.getMonthlyExpensesForMonth(this.selectedMonth);
   }
 
-  // Auto-generated investment expense methods
+  // Auto-generated investment expense methods (consolidated)
   generateAutomaticInvestmentExpenses() {
     const today = new Date();
     const currentMonth = today.getMonth();
@@ -874,7 +941,7 @@ getMonthlyBreakdown(investment: Investment): string[] {
       
       let currentDate = new Date(startDate);
       
-       while (currentDate <= endDate && currentDate <= today) {
+      while (currentDate <= endDate && currentDate <= today) {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
         
@@ -901,6 +968,38 @@ getMonthlyBreakdown(investment: Investment): string[] {
     this.updateExpenseSummary();
     this.filterExpensesByMonth();
     this.saveToLocal();
+  }
+
+  cleanupInactiveInvestmentExpenses() {
+    // Get all auto-generated expenses
+    const autoExpenses = this.expenses.filter(expense => expense.id.startsWith('auto_'));
+    
+    // Remove expenses that don't have corresponding investments
+    this.expenses = this.expenses.filter(expense => {
+      if (!expense.id.startsWith('auto_')) {
+        return true; // Keep non-auto expenses
+      }
+      
+      // For auto expenses, check if the source investment still exists
+      const parts = expense.id.split('_');
+      if (parts.length >= 4) {
+        const investmentIndex = parseInt(parts[parts.length - 1]);
+        const investment = this.investments[investmentIndex];
+        
+        if (!investment) {
+          return false; // Remove if investment doesn't exist
+        }
+        
+        // Check if investment type matches
+        const expenseType = parts[1]; // RD or PPF
+        return investment.type === expenseType;
+      }
+      
+      return false; // Remove malformed auto expenses
+    });
+    
+    this.updateExpenseSummary();
+    this.filterExpensesByMonth();
   }
 
   checkAndGenerateInvestmentExpenses() {
@@ -943,25 +1042,6 @@ getMonthlyBreakdown(investment: Investment): string[] {
     });
   }
 
-  cleanupInactiveInvestmentExpenses() {
-    const activeInvestmentIds = this.investments
-      .filter(inv => inv.type === 'RD' || inv.type === 'PPF')
-      .map((inv, index) => index);
-    
-    this.expenses = this.expenses.filter(expense => {
-      if (expense.id.startsWith('auto_')) {
-        const parts = expense.id.split('_');
-        const investmentIndex = parseInt(parts[parts.length - 1]);
-        return activeInvestmentIds.includes(investmentIndex);
-      }
-      return true;
-    });
-    
-    this.updateExpenseSummary();
-    this.filterExpensesByMonth();
-    this.saveToLocal();
-  }
-
   setupPeriodicExpenseCheck() {
     this.checkAndGenerateInvestmentExpenses();
     
@@ -977,6 +1057,7 @@ getMonthlyBreakdown(investment: Investment): string[] {
     }
   }
 
+  // Helper methods for auto-generated expenses
   hasAutoGeneratedExpenses(): boolean {
     return this.expenses.some(expense => expense.id.startsWith('auto_'));
   }
@@ -1046,5 +1127,4 @@ getMonthlyBreakdown(investment: Investment): string[] {
     
     return null;
   }
-
 }

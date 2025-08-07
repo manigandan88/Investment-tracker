@@ -164,49 +164,155 @@
     <div *ngIf="investments.length > 0">
       <h3>Investment Summary</h3>
       <div class="table-responsive">
-        <table border="1" cellpadding="8">
-          <thead>
-            <tr>
-              <th>S.No</th>
-              <th>Investment Type</th>
-              <th>Start Date</th>
-              <th>End Date</th>
-              <th>Investment Amount</th>
-              <th>Current Value</th>
-              <th>Maturity Value</th>
-              <th>Interest Rate (%)</th>
-              <th>Invested So Far</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let inv of investments; let i = index">
-              <td>{{ i + 1 }}</td>
-              <td>{{ inv.type }}</td>
-              <td>{{ inv.startDate | date : "dd/MM/yyyy" }}</td>
-              <td>{{ getEndDateDisplay(inv) }}</td>
-              <td>
-                {{ getAmountDisplay(inv) }}
-                <div *ngIf="hasMonthlyBreakdown(inv)" class="monthly-breakdown">
-                  <small><strong>Monthly Investments:</strong></small>
-                  <div class="breakdown-list">
-                    <small *ngFor="let month of getMonthlyBreakdown(inv)">{{ month }}</small>
-                  </div>
+    <table border="1" cellpadding="8">
+      <thead>
+        <tr>
+          <th>S.No</th>
+          <th>Investment Type</th>
+          <th>Start Date</th>
+          <th>End Date</th>
+          <th>Investment Amount</th>
+          <th>Current Value</th>
+          <th>Maturity Value</th>
+          <th>Interest Rate (%)</th>
+          <th>Invested So Far</th>
+          <th>Actions</th> <!-- NEW: Actions column -->
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let inv of investments; let i = index" [class.editing-row]="isEditingInvestment(i)">
+          <td>{{ i + 1 }}</td>
+          
+          <!-- Investment Type -->
+          <td>
+            <select 
+              *ngIf="isEditingInvestment(i); else showType"
+              [(ngModel)]="editingInvestment.type"
+              name="editType"
+              class="edit-select">
+              <option *ngFor="let type of getInvestmentTypes()" [value]="type">
+                {{ type }}
+              </option>
+            </select>
+            <ng-template #showType>{{ inv.type }}</ng-template>
+          </td>
+          
+          <!-- Start Date -->
+          <td>
+            <input 
+              *ngIf="isEditingInvestment(i); else showStartDate"
+              type="date"
+              [(ngModel)]="editingInvestment.startDate"
+              name="editStartDate"
+              class="edit-input">
+            <ng-template #showStartDate>{{ inv.startDate | date : "dd/MM/yyyy" }}</ng-template>
+          </td>
+          
+          <!-- End Date -->
+          <td>{{ getEndDateDisplay(inv) }}</td>
+          
+          <!-- Investment Amount -->
+          <td>
+            <div *ngIf="isEditingInvestment(i); else showAmount">
+              <input 
+                type="number"
+                [(ngModel)]="editingInvestment.amount"
+                name="editAmount"
+                class="edit-input"
+                min="1"
+                required>
+            </div>
+            <ng-template #showAmount>
+              {{ getAmountDisplay(inv) }}
+              <div *ngIf="hasMonthlyBreakdown(inv)" class="monthly-breakdown">
+                <small><strong>Monthly Investments:</strong></small>
+                <div class="breakdown-list">
+                  <small *ngFor="let month of getMonthlyBreakdown(inv)">{{ month }}</small>
                 </div>
-              </td>
-              <td class="currency">
-                ₹{{ getMaturityAndCurrentValue(inv).currentValue | number : "1.0-0" }}
-              </td>
-              <td class="currency">
-                ₹{{ getMaturityAndCurrentValue(inv).maturityValue | number : "1.0-0" }}
-              </td>
-              <td>{{ inv.interestRate }}%</td>
-              <td class="currency">
-                ₹{{ getMaturityAndCurrentValue(inv).investedSoFar | number : "1.0-0" }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              </div>
+            </ng-template>
+          </td>
+          
+          <!-- Current Value -->
+          <td class="currency">
+            ₹{{ getMaturityAndCurrentValue(inv).currentValue | number : "1.0-0" }}
+          </td>
+          
+          <!-- Maturity Value -->
+          <td class="currency">
+            ₹{{ getMaturityAndCurrentValue(inv).maturityValue | number : "1.0-0" }}
+          </td>
+          
+          <!-- Interest Rate -->
+          <td>
+            <input 
+              *ngIf="isEditingInvestment(i); else showRate"
+              type="number"
+              [(ngModel)]="editingInvestment.interestRate"
+              name="editRate"
+              class="edit-input"
+              min="0"
+              max="50"
+              step="0.1">
+            <ng-template #showRate>{{ inv.interestRate }}%</ng-template>
+          </td>
+          
+          <!-- Invested So Far -->
+          <td class="currency">
+            ₹{{ getMaturityAndCurrentValue(inv).investedSoFar | number : "1.0-0" }}
+          </td>
+          
+          <!-- NEW: Actions Column -->
+          <td class="actions-column">
+            <!-- Edit Mode Actions -->
+            <div *ngIf="isEditingInvestment(i)" class="edit-actions">
+              <button class="save-btn" (click)="saveEditInvestment()" title="Save Changes">
+                💾 Save
+              </button>
+              <button class="cancel-btn" (click)="cancelEditInvestment()" title="Cancel Edit">
+                ❌ Cancel
+              </button>
+              
+              <!-- Duration field for edit mode -->
+              <div class="duration-edit" *ngIf="editingInvestment.type !== 'Savings'">
+                <label>Duration:</label>
+                <input 
+                  *ngIf="isDurationEditable(editingInvestment.type); else showFixedDuration"
+                  type="number"
+                  [(ngModel)]="editingInvestment.durationMonths"
+                  name="editDuration"
+                  class="edit-input small"
+                  min="1">
+                <ng-template #showFixedDuration>
+                  <input 
+                    type="text"
+                    value="15 Years (Fixed)"
+                    readonly
+                    class="edit-input readonly">
+                </ng-template>
+              </div>
+            </div>
+            
+            <!-- Normal Mode Actions -->
+            <div *ngIf="!isEditingInvestment(i)" class="normal-actions">
+              <button 
+                class="edit-btn" 
+                (click)="startEditInvestment(i)"
+                title="Edit Investment">
+                 Edit
+              </button>
+              <button 
+                class="delete-btn" 
+                (click)="deleteInvestment(i)"
+                title="Delete Investment">
+                 Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
       <div class="summary-section">
         <h4>Total Invested by Type</h4>
         <ul class="summary-list">
