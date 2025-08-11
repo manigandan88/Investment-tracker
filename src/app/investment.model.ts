@@ -9,6 +9,7 @@ export interface Investment {
 }
 
 export interface Expense {
+  paymentMethod: string;
   id: string;
   category: string;
   description: string;
@@ -28,14 +29,19 @@ export interface MonthlyIncome {
 
 export interface MonthlyBudget {
   month: string;
-  income: number;
-  expenses: number;
-  investments: number;
-  remaining: number;
+  totalIncome: number;
+  totalExpenses: number;
+  totalAccountExpenses: number; // NEW: Track account expenses separately
+  totalCashExpenses: number; // NEW: Track cash expenses separately
+  totalInvestments: number;
+  netAvailable: number; // NEW: Net available after account expenses
+  savingsAdded: number;
 }
 
 export interface SavingsEntry {
   month: string;
   amount: number;
   source: 'remaining' | 'manual' | 'bonus';
+    type: 'income' | 'expense';
+  date: Date;
 }

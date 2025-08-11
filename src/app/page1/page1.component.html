@@ -1,4 +1,5 @@
-<div class="container">
+<div class="bg">
+  <div class="container">
   <h2>Investment & Expense Tracker</h2>
 
   <!-- Tab Navigation -->
@@ -141,25 +142,6 @@
       </canvas>
     </div>
 
-    <!-- <div class="savings-summary">
-  <h4>Savings Breakdown</h4>
-  
-  <div class="savings-row">
-    <span>Initial Savings:</span>
-    <span>₹{{ getSavingsFromInvestments() | number }}</span>
-  </div>
-
-  <div *ngFor="let entry of savingsHistory | slice:0:5" class="savings-row">
-    <span>{{ getMonthDisplay(entry.month) }} Addition:</span>
-    <span>+ ₹{{ entry.amount | number }}</span>
-  </div>
-
-  <div class="savings-total">
-    <strong>Total Savings:</strong>
-    <strong>₹{{ getTotalSavings() | number }}</strong>
-  </div>
-</div> -->
-
     <!-- Investment Summary Table -->
     <div *ngIf="investments.length > 0">
       <h3>Investment Summary</h3>
@@ -176,7 +158,7 @@
           <th>Maturity Value</th>
           <th>Interest Rate (%)</th>
           <th>Invested So Far</th>
-          <th>Actions</th> <!-- NEW: Actions column -->
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -262,7 +244,7 @@
             ₹{{ getMaturityAndCurrentValue(inv).investedSoFar | number : "1.0-0" }}
           </td>
           
-          <!-- NEW: Actions Column -->
+          <!-- Actions Column -->
           <td class="actions-column">
             <!-- Edit Mode Actions -->
             <div *ngIf="isEditingInvestment(i)" class="edit-actions">
@@ -319,10 +301,6 @@
           <li *ngFor="let key of objectKeys(totalByType)">
             <strong>{{ key }}:</strong> ₹{{ totalByType[key] | number : "1.0-0" }}
           </li>
-           <!-- Add this line for Savings -->
-    <!-- <li *ngIf="getSavingsFromInvestments() > 0">
-      <strong>Savings:</strong> ₹{{ getSavingsFromInvestments() | number : "1.0-0" }}
-    </li> -->
         </ul>
         <div class="totals">
           <h4>Portfolio Summary</h4>
@@ -338,11 +316,10 @@
             <strong>Total Maturity Value:</strong>
             ₹{{ getTotalMaturityValue() | number : "1.0-0" }}
           </div>
-             <!-- Add this line for Total Savings -->
-    <div class="total-item red">
-      <strong>Total Savings:</strong>
-      ₹{{ getTotalSavings() | number : "1.0-0" }}
-    </div>
+          <div class="total-item red">
+            <strong>Total Savings:</strong>
+            ₹{{ getTotalSavings() | number : "1.0-0" }}
+          </div>
         </div>
       </div>
     </div>
@@ -401,6 +378,22 @@
             <option value="monthly">Monthly Recurring</option>
           </select>
         </div>
+        <!-- NEW: Payment Method -->
+        <div class="form-group">
+          <label>Payment Method:</label>
+          <select [(ngModel)]="newExpense.paymentMethod" name="paymentMethod" required>
+            <option value="cash">💵 Cash</option>
+            <option value="account">🏦 Account</option>
+          </select>
+          <small class="payment-hint">
+            <span *ngIf="newExpense.paymentMethod === 'cash'" class="cash-hint">
+              💡 Cash payments don't affect your account balance
+            </span>
+            <span *ngIf="newExpense.paymentMethod === 'account'" class="account-hint">
+              💡 Account payments will reduce your monthly income
+            </span>
+          </small>
+        </div>
       </div>
       <div class="btn-cnt">
         <button class="expense-btn" type="submit">Add Expense</button>
@@ -452,6 +445,15 @@
             <option value="one-time">One-time</option>
           </select>
         </div>
+        <!-- NEW: Payment Method Filter -->
+        <div class="form-group">
+          <label>Filter by Payment:</label>
+          <select [(ngModel)]="expenseFilterPayment" name="expenseFilterPayment" (ngModelChange)="filterExpensesByMonth()">
+            <option value="">All Payments</option>
+            <option value="cash">Cash</option>
+            <option value="account">Account</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -462,6 +464,7 @@
           Expense Details for {{ getMonthDisplay(expenseFilterMonth) }}
           <span *ngIf="expenseFilterCategory" class="filter-tag">{{ expenseFilterCategory }}</span>
           <span *ngIf="expenseFilterType" class="filter-tag">{{ expenseFilterType === 'monthly' ? 'Monthly' : 'One-time' }}</span>
+          <span *ngIf="expenseFilterPayment" class="filter-tag payment-tag">{{ expenseFilterPayment === 'cash' ? '💵 Cash' : '🏦 Account' }}</span>
         </h3>
       </div>
       
@@ -469,6 +472,14 @@
         <div class="stat-item">
           <span class="stat-label">Total Filtered Expenses:</span>
           <span class="stat-value">₹{{ getFilteredExpenseTotal() | number : "1.0-0" }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Cash Expenses:</span>
+          <span class="stat-value cash">₹{{ getFilteredCashExpenses() | number : "1.0-0" }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Account Expenses:</span>
+          <span class="stat-value account">₹{{ getFilteredAccountExpenses() | number : "1.0-0" }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">Number of Transactions:</span>
@@ -486,11 +497,12 @@
               <th>Amount</th>
               <th>Date</th>
               <th>Type</th>
+              <th>Payment Method</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let expense of filteredExpenses; let i = index">
+            <tr *ngFor="let expense of filteredExpenses; let i = index" [class.cash-payment]="expense.paymentMethod === 'cash'" [class.account-payment]="expense.paymentMethod === 'account'">
               <td>{{ i + 1 }}</td>
               <td>{{ expense.category }}</td>
               <td>{{ expense.description }}</td>
@@ -499,6 +511,11 @@
               <td>
                 <span class="expense-type" [class]="expense.type">
                   {{ expense.type === 'monthly' ? 'Monthly' : 'One-time' }}
+                </span>
+              </td>
+              <td>
+                <span class="payment-method" [class]="expense.paymentMethod">
+                  {{ expense.paymentMethod === 'cash' ? '💵 Cash' : '🏦 Account' }}
                 </span>
               </td>
               <td>
@@ -524,6 +541,23 @@
     <!-- All Expenses Summary -->
     <div *ngIf="expenses.length > 0" class="all-expenses-section">
       <h3>All Expenses Summary</h3>
+      
+      <!-- Payment Method Overview -->
+      <div class="payment-overview">
+        <div class="payment-summary-grid">
+          <div class="payment-summary-item cash">
+            <h5>💵 Total Cash Expenses</h5>
+            <span class="amount">₹{{ getTotalCashExpenses() | number : "1.0-0" }}</span>
+            <small>{{ getCashExpenseCount() }} transactions</small>
+          </div>
+          <div class="payment-summary-item account">
+            <h5>🏦 Total Account Expenses</h5>
+            <span class="amount">₹{{ getTotalAccountExpenses() | number : "1.0-0" }}</span>
+            <small>{{ getAccountExpenseCount() }} transactions</small>
+          </div>
+        </div>
+      </div>
+
       <div class="table-responsive">
         <table border="1" cellpadding="8">
           <thead>
@@ -534,11 +568,12 @@
               <th>Amount</th>
               <th>Date</th>
               <th>Type</th>
+              <th>Payment Method</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let expense of expenses; let i = index">
+            <tr *ngFor="let expense of expenses; let i = index" [class.cash-payment]="expense.paymentMethod === 'cash'" [class.account-payment]="expense.paymentMethod === 'account'">
               <td>{{ i + 1 }}</td>
               <td>{{ expense.category }}</td>
               <td>{{ expense.description }}</td>
@@ -547,6 +582,11 @@
               <td>
                 <span class="expense-type" [class]="expense.type">
                   {{ expense.type === 'monthly' ? 'Monthly' : 'One-time' }}
+                </span>
+              </td>
+              <td>
+                <span class="payment-method" [class]="expense.paymentMethod">
+                  {{ expense.paymentMethod === 'cash' ? '💵 Cash' : '🏦 Account' }}
                 </span>
               </td>
               <td>
@@ -566,6 +606,14 @@
         </div>
         <div class="totals">
           <h4>Total Expenses</h4>
+          <div class="total-item">
+            <strong>Total Cash Expenses:</strong>
+            ₹{{ getTotalCashExpenses() | number : "1.0-0" }}
+          </div>
+          <div class="total-item">
+            <strong>Total Account Expenses:</strong>
+            ₹{{ getTotalAccountExpenses() | number : "1.0-0" }}
+          </div>
           <div class="total-item">
             <strong>Total One-time Expenses:</strong>
             ₹{{ getTotalOneTimeExpenses() | number : "1.0-0" }}
@@ -700,6 +748,14 @@
             <strong>Total All Income:</strong>
             ₹{{ getTotalIncome() | number : "1.0-0" }}
           </div>
+          <div class="total-item account-deduction">
+            <strong>Account Deductions (Expenses):</strong>
+            -₹{{ getTotalAccountExpenses() | number : "1.0-0" }}
+          </div>
+          <div class="total-item net-income">
+            <strong>Net Account Balance:</strong>
+            ₹{{ getNetAccountBalance() | number : "1.0-0" }}
+          </div>
         </div>
       </div>
     </div>
@@ -734,16 +790,61 @@
             <span class="amount">₹{{ getMonthlyIncomeForMonth(selectedMonth) | number : "1.0-0" }}</span>
           </div>
           <div class="budget-item expenses">
-            <h5>Monthly Expenses</h5>
+            <h5>Total Monthly Expenses</h5>
             <span class="amount">₹{{ getMonthlyExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
+          </div>
+          <div class="budget-item account-expenses">
+            <h5>Account Expenses Only</h5>
+            <span class="amount">₹{{ getMonthlyAccountExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
+          </div>
+          <div class="budget-item cash-expenses">
+            <h5>Cash Expenses Only</h5>
+            <span class="amount">₹{{ getMonthlyCashExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
           </div>
           <div class="budget-item investments">
             <h5>Monthly Investments</h5>
             <span class="amount">₹{{ getMonthlyInvestmentsForMonth(selectedMonth) | number : "1.0-0" }}</span>
           </div>
           <div class="budget-item remaining" [class.negative]="getRemainingAmount() < 0">
-            <h5>Remaining Amount</h5>
-            <span class="amount">₹{{ getRemainingAmount() | number : "1.0-0" }}</span>
+            <h5>Net Available (Income - Account Expenses)</h5>
+            <span class="amount">₹{{ getNetAvailableAmount() | number : "1.0-0" }}</span>
+          </div>
+        </div>
+
+        <!-- Enhanced Payment Method Breakdown -->
+        <div class="payment-breakdown">
+          <h4>💰 Payment Method Analysis</h4>
+          <div class="payment-analysis-grid">
+            <div class="analysis-card cash-card">
+              <h5>💵 Cash Flow</h5>
+              <div class="flow-details">
+                <div class="flow-item">
+                  <span class="label">Cash Expenses:</span>
+                  <span class="value">₹{{ getMonthlyCashExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
+                </div>
+                <div class="flow-note">
+                  <small>💡 Cash expenses don't affect your account balance</small>
+                </div>
+              </div>
+            </div>
+            
+            <div class="analysis-card account-card">
+              <h5>🏦 Account Flow</h5>
+              <div class="flow-details">
+                <div class="flow-item">
+                  <span class="label">Income:</span>
+                  <span class="value positive">+₹{{ getMonthlyIncomeForMonth(selectedMonth) | number : "1.0-0" }}</span>
+                </div>
+                <div class="flow-item">
+                  <span class="label">Account Expenses:</span>
+                  <span class="value negative">-₹{{ getMonthlyAccountExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
+                </div>
+                <div class="flow-item total">
+                  <span class="label">Net Balance:</span>
+                  <span class="value" [class.negative]="getNetAvailableAmount() < 0">₹{{ getNetAvailableAmount() | number : "1.0-0" }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -767,7 +868,7 @@
             <div class="savings-item total">
               <h5>Total Savings</h5>
               <span class="amount total-amount">₹{{ getTotalSavings() | number : "1.0-0" }}</span>
-              <small>Initial + This Month</small>
+              <small>Initial + Monthly Additions</small>
             </div>
           </div>
 
@@ -776,9 +877,9 @@
             <button 
               class="save-remaining-btn" 
               (click)="addRemainingToSavings()"
-              [disabled]="getRemainingAmount() <= 0">
-              <span *ngIf="getRemainingAmount() > 0">💾 Save ₹{{ getRemainingAmount() | number : "1.0-0" }} to Savings</span>
-              <span *ngIf="getRemainingAmount() <= 0">💸 No Surplus to Save</span>
+              [disabled]="getNetAvailableAmount() <= 0">
+              <span *ngIf="getNetAvailableAmount() > 0">💾 Save ₹{{ getNetAvailableAmount() | number : "1.0-0" }} to Savings</span>
+              <span *ngIf="getNetAvailableAmount() <= 0">💸 No Net Surplus to Save</span>
             </button>
           </div>
 
@@ -792,7 +893,7 @@
                 [class.current-month]="entry.month === selectedMonth">
                 <div class="history-info">
                   <span class="month-name">{{ getMonthDisplay(entry.month) }}</span>
-                  <span class="entry-source">From remaining amount</span>
+                  <span class="entry-source">From net available amount</span>
                 </div>
                 <div class="history-amount">
                   <span class="amount-value">+₹{{ entry.amount | number : "1.0-0" }}</span>
@@ -820,9 +921,17 @@
           
           <div class="analytics-grid">
             <div class="analytics-item expense-ratio">
-              <h6>Expense Ratio</h6>
+              <h6>Total Expense Ratio</h6>
               <div class="ratio-value">
                 {{ ((getMonthlyExpensesForMonth(selectedMonth) / getMonthlyIncomeForMonth(selectedMonth)) * 100) | number : "1.0-0" }}%
+              </div>
+              <small>of total income</small>
+            </div>
+            
+            <div class="analytics-item account-ratio">
+              <h6>Account Expense Ratio</h6>
+              <div class="ratio-value">
+                {{ ((getMonthlyAccountExpensesForMonth(selectedMonth) / getMonthlyIncomeForMonth(selectedMonth)) * 100) | number : "1.0-0" }}%
               </div>
               <small>of total income</small>
             </div>
@@ -836,9 +945,9 @@
             </div>
             
             <div class="analytics-item savings-ratio">
-              <h6>Savings Ratio</h6>
-              <div class="ratio-value" [class.negative]="getRemainingAmount() < 0">
-                {{ ((getRemainingAmount() / getMonthlyIncomeForMonth(selectedMonth)) * 100) | number : "1.0-0" }}%
+              <h6>Net Savings Ratio</h6>
+              <div class="ratio-value" [class.negative]="getNetAvailableAmount() < 0">
+                {{ ((getNetAvailableAmount() / getMonthlyIncomeForMonth(selectedMonth)) * 100) | number : "1.0-0" }}%
               </div>
               <small>of total income</small>
             </div>
@@ -848,22 +957,22 @@
               <div class="health-indicator">
                 <span 
                   class="health-status"
-                  [class.excellent]="getRemainingAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2"
-                  [class.good]="getRemainingAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.1 && getRemainingAmount() < getMonthlyIncomeForMonth(selectedMonth) * 0.2"
-                  [class.average]="getRemainingAmount() >= 0 && getRemainingAmount() < getMonthlyIncomeForMonth(selectedMonth) * 0.1"
-                  [class.poor]="getRemainingAmount() < 0">
+                  [class.excellent]="getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2"
+                  [class.good]="getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.1 && getNetAvailableAmount() < getMonthlyIncomeForMonth(selectedMonth) * 0.2"
+                  [class.average]="getNetAvailableAmount() >= 0 && getNetAvailableAmount() < getMonthlyIncomeForMonth(selectedMonth) * 0.1"
+                  [class.poor]="getNetAvailableAmount() < 0">
                   {{ 
-                    getRemainingAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2 ? 'Excellent' :
-                    getRemainingAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.1 ? 'Good' :
-                    getRemainingAmount() >= 0 ? 'Average' : 'Poor'
+                    getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2 ? 'Excellent' :
+                    getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.1 ? 'Good' :
+                    getNetAvailableAmount() >= 0 ? 'Average' : 'Poor'
                   }}
                 </span>
               </div>
               <small>
                 {{ 
-                  getRemainingAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2 ? 'Great savings rate!' :
-                  getRemainingAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.1 ? 'Good financial discipline' :
-                  getRemainingAmount() >= 0 ? 'Room for improvement' : 'Budget deficit'
+                  getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2 ? 'Great savings rate!' :
+                  getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.1 ? 'Good financial discipline' :
+                  getNetAvailableAmount() >= 0 ? 'Room for improvement' : 'Account deficit'
                 }}
               </small>
             </div>
@@ -874,15 +983,19 @@
         <div class="financial-tips">
           <h4>💡 Financial Tips</h4>
           <div class="tips-container">
-            <div class="tip-item" *ngIf="getRemainingAmount() < 0">
+            <div class="tip-item" *ngIf="getNetAvailableAmount() < 0">
               <span class="tip-icon">⚠️</span>
-              <span class="tip-text">Your expenses exceed income. Consider reducing expenses or increasing income.</span>
+              <span class="tip-text">Your account expenses exceed income. Consider reducing account-based expenses or using more cash payments.</span>
             </div>
-            <div class="tip-item" *ngIf="getRemainingAmount() >= 0 && getRemainingAmount() < getMonthlyIncomeForMonth(selectedMonth) * 0.1">
+            <div class="tip-item" *ngIf="getMonthlyCashExpensesForMonth(selectedMonth) > getMonthlyAccountExpensesForMonth(selectedMonth)">
+              <span class="tip-icon">💵</span>
+              <span class="tip-text">Good cash flow management! You're using more cash than account payments.</span>
+            </div>
+            <div class="tip-item" *ngIf="getNetAvailableAmount() >= 0 && getNetAvailableAmount() < getMonthlyIncomeForMonth(selectedMonth) * 0.1">
               <span class="tip-icon">📈</span>
               <span class="tip-text">Try to save at least 10% of your income for better financial security.</span>
             </div>
-            <div class="tip-item" *ngIf="getRemainingAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2">
+            <div class="tip-item" *ngIf="getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2">
               <span class="tip-icon">🎯</span>
               <span class="tip-text">Excellent savings rate! Consider investing the surplus in long-term instruments.</span>
             </div>
@@ -903,7 +1016,7 @@
           <span class="info-icon">⚡</span>
           <div class="info-content">
             <strong>Automatic Savings</strong>
-            <p>Your remaining amount is automatically added to savings when you change income or expenses.</p>
+            <p>Your net available amount (income minus account expenses) is automatically added to savings when you change income or expenses.</p>
           </div>
         </div>
         <div class="info-item">
@@ -916,11 +1029,12 @@
         <div class="info-item">
           <span class="info-icon">📊</span>
           <div class="info-content">
-            <strong>Month-wise Tracking</strong>
-            <p>Track how much you save each month and build your emergency fund systematically.</p>
+            <strong>Smart Calculation</strong>
+            <p>Only account-based expenses reduce your available balance. Cash expenses are tracked separately.</p>
           </div>
         </div>
       </div>
     </div>
   </div>
+</div>
 </div>

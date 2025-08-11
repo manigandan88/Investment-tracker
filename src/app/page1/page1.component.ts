@@ -59,7 +59,8 @@ export class Page1Component implements OnInit {
     description: '',
     amount: 0,
     date: new Date(),
-    type: 'one-time'
+    type: 'one-time',
+    paymentMethod: 'cash' // NEW: Default to cash
   };
   expenses: Expense[] = [];
   expensesByCategory: { [key: string]: number } = {};
@@ -69,6 +70,7 @@ export class Page1Component implements OnInit {
   expenseFilterMonth: string = new Date().toISOString().substring(0, 7);
   expenseFilterCategory: string = '';
   expenseFilterType: string = '';
+  expenseFilterPayment: string = ''; // NEW: Payment method filter
   filteredExpenses: Expense[] = [];
   filteredExpensesByCategory: { [key: string]: number } = {};
 
@@ -139,6 +141,7 @@ export class Page1Component implements OnInit {
     this.expenseFilterMonth = new Date().toISOString().substring(0, 7);
     this.expenseFilterCategory = '';
     this.expenseFilterType = '';
+    this.expenseFilterPayment = ''; // NEW: Clear payment filter
     this.filterExpensesByMonth();
     this.saveFilterSettings();
   }
@@ -237,7 +240,65 @@ export class Page1Component implements OnInit {
     return investment.durationMonths?.toString() || '12';
   }
 
-  // Savings Methods (consolidated)
+  // NEW: Payment Method Helper Methods
+  getTotalCashExpenses(): number {
+    return this.expenses
+      .filter(expense => expense.paymentMethod === 'cash')
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
+  getTotalAccountExpenses(): number {
+    return this.expenses
+      .filter(expense => expense.paymentMethod === 'account')
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
+  getCashExpenseCount(): number {
+    return this.expenses.filter(expense => expense.paymentMethod === 'cash').length;
+  }
+
+  getAccountExpenseCount(): number {
+    return this.expenses.filter(expense => expense.paymentMethod === 'account').length;
+  }
+
+  getFilteredCashExpenses(): number {
+    return this.filteredExpenses
+      .filter(expense => expense.paymentMethod === 'cash')
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
+  getFilteredAccountExpenses(): number {
+    return this.filteredExpenses
+      .filter(expense => expense.paymentMethod === 'account')
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
+  getMonthlyCashExpensesForMonth(month: string): number {
+    return this.calculateMonthlyAmount(
+      this.expenses.filter(exp => exp.paymentMethod === 'cash'), 
+      month, 
+      'expense'
+    );
+  }
+
+  getMonthlyAccountExpensesForMonth(month: string): number {
+    return this.calculateMonthlyAmount(
+      this.expenses.filter(exp => exp.paymentMethod === 'account'), 
+      month, 
+      'expense'
+    );
+  }
+
+  getNetAccountBalance(): number {
+    return this.getTotalIncome() - this.getTotalAccountExpenses();
+  }
+
+  getNetAvailableAmount(): number {
+    return this.getMonthlyIncomeForMonth(this.selectedMonth) - 
+           this.getMonthlyAccountExpensesForMonth(this.selectedMonth);
+  }
+
+  // Savings Methods (updated to use net available amount)
   getSavingsFromInvestments(): number {
     return this.investments
       .filter(inv => inv.type === 'Savings')
@@ -264,12 +325,12 @@ export class Page1Component implements OnInit {
   }
 
   autoSaveRemainingAmount() {
-    const remainingAmount = this.getRemainingAmount();
-    if (remainingAmount > 0) {
+    const netAvailableAmount = this.getNetAvailableAmount(); // Changed to use net available
+    if (netAvailableAmount > 0) {
       const existingIndex = this.savingsHistory.findIndex(entry => entry.month === this.selectedMonth);
       const newEntry = {
         month: this.selectedMonth,
-        amount: remainingAmount,
+        amount: netAvailableAmount,
         source: 'remaining'
       };
       
@@ -279,20 +340,20 @@ export class Page1Component implements OnInit {
         this.savingsHistory.push(newEntry);
       }
       this.saveToLocal();
-    } else if (remainingAmount <= 0) {
-      // Remove savings entry if remaining becomes negative or zero
+    } else if (netAvailableAmount <= 0) {
+      // Remove savings entry if net available becomes negative or zero
       this.savingsHistory = this.savingsHistory.filter(entry => entry.month !== this.selectedMonth);
       this.saveToLocal();
     }
   }
 
   addRemainingToSavings() {
-    const remainingAmount = this.getRemainingAmount();
-    if (remainingAmount > 0) {
+    const netAvailableAmount = this.getNetAvailableAmount(); // Changed to use net available
+    if (netAvailableAmount > 0) {
       this.autoSaveRemainingAmount();
-      alert(`₹${remainingAmount.toLocaleString()} has been added to your savings for ${this.getMonthDisplay(this.selectedMonth)}!`);
+      alert(`₹${netAvailableAmount.toLocaleString()} has been added to your savings for ${this.getMonthDisplay(this.selectedMonth)}!`);
     } else {
-      alert('No surplus amount available to add to savings.');
+      alert('No net surplus amount available to add to savings.');
     }
   }
 
@@ -325,9 +386,15 @@ export class Page1Component implements OnInit {
     this.autoSaveRemainingAmount();
   }
 
-  // Expense Methods
+  // Expense Methods (updated)
   addExpense() {
     this.newExpense.id = this.generateId();
+    
+    // Ensure paymentMethod is set (default to 'cash' if undefined)
+    if (!this.newExpense.paymentMethod) {
+      this.newExpense.paymentMethod = 'cash';
+    }
+    
     this.expenses.push({ ...this.newExpense });
     this.saveToLocal();
     console.log('New expense added:', this.newExpense);
@@ -341,7 +408,8 @@ export class Page1Component implements OnInit {
       description: '',
       amount: 0,
       date: new Date(),
-      type: 'one-time'
+      type: 'one-time',
+      paymentMethod: 'cash' // NEW: Reset to default
     };
     this.updateBudgetSummary();
     this.autoSaveRemainingAmount();
@@ -393,7 +461,7 @@ export class Page1Component implements OnInit {
     return Date.now().toString() + Math.random().toString(36).substr(2, 9);
   }
 
-  // Expense filtering methods
+  // Expense filtering methods (updated)
   filterExpensesByMonth() {
     if (!this.expenseFilterMonth) {
       this.filteredExpenses = [...this.expenses];
@@ -415,8 +483,9 @@ export class Page1Component implements OnInit {
         
         const categoryMatch = !this.expenseFilterCategory || expense.category === this.expenseFilterCategory;
         const typeMatch = !this.expenseFilterType || expense.type === this.expenseFilterType;
+        const paymentMatch = !this.expenseFilterPayment || expense.paymentMethod === this.expenseFilterPayment; // NEW: Payment filter
         
-        return dateMatch && categoryMatch && typeMatch;
+        return dateMatch && categoryMatch && typeMatch && paymentMatch;
       });
     }
     
@@ -485,27 +554,29 @@ export class Page1Component implements OnInit {
     return this.incomes.reduce((sum, income) => sum + income.amount, 0);
   }
 
-  // Budget Methods (consolidated monthly calculation logic)
+  // Budget Methods (updated for payment methods)
   updateBudgetSummary() {
     const monthlyIncome = this.getMonthlyIncomeForMonth(this.selectedMonth);
-    const monthlyExpenses = this.getMonthlyExpensesForMonth(this.selectedMonth);
+    const monthlyAccountExpenses = this.getMonthlyAccountExpensesForMonth(this.selectedMonth);
+    const monthlyCashExpenses = this.getMonthlyCashExpensesForMonth(this.selectedMonth);
     const monthlyInvestments = this.getMonthlyInvestmentsForMonth(this.selectedMonth);
-    const remaining = monthlyIncome - monthlyExpenses - monthlyInvestments;
+    const netAvailable = monthlyIncome - monthlyAccountExpenses;
 
-    // Update budget chart - including savings
+    // Update budget chart - showing account vs cash expenses
     this.budgetChartData = {
-      labels: ['Expenses', 'Investments', 'Savings'],
+      labels: ['Account Expenses', 'Cash Expenses', 'Investments', 'Net Available'],
       datasets: [{
-        data: [monthlyExpenses, monthlyInvestments, Math.max(0, remaining)],
+        data: [monthlyAccountExpenses, monthlyCashExpenses, monthlyInvestments, Math.max(0, netAvailable)],
         backgroundColor: [
-          '#FF6384', // Red for expenses
+          '#FF6384', // Red for account expenses
+          '#FF9F40', // Orange for cash expenses
           '#36A2EB', // Blue for investments
-          '#4BC0C0'  // Teal for savings
+          '#4BC0C0'  // Teal for net available
         ]
       }]
     };
 
-    // Update auto-savings
+    // Update auto-savings based on net available
     this.autoSaveRemainingAmount();
   }
 
@@ -564,7 +635,7 @@ export class Page1Component implements OnInit {
     return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
   }
 
-  // Storage Methods
+  // Storage Methods (updated)
   saveToLocal() {
     const data = {
       investments: this.investments,
@@ -575,7 +646,8 @@ export class Page1Component implements OnInit {
         showFilters: this.showFilters,
         expenseFilterMonth: this.expenseFilterMonth,
         expenseFilterCategory: this.expenseFilterCategory,
-        expenseFilterType: this.expenseFilterType
+        expenseFilterType: this.expenseFilterType,
+        expenseFilterPayment: this.expenseFilterPayment // NEW: Save payment filter
       }
     };
     localStorage.setItem('financialData', JSON.stringify(data));
@@ -587,7 +659,8 @@ export class Page1Component implements OnInit {
       showFilters: this.showFilters,
       expenseFilterMonth: this.expenseFilterMonth,
       expenseFilterCategory: this.expenseFilterCategory,
-      expenseFilterType: this.expenseFilterType
+      expenseFilterType: this.expenseFilterType,
+      expenseFilterPayment: this.expenseFilterPayment // NEW: Save payment filter
     };
     localStorage.setItem('financialData', JSON.stringify(data));
   }
@@ -607,11 +680,12 @@ export class Page1Component implements OnInit {
           this.updateChart();
         }
         
-        // Load expenses
+        // Load expenses (updated to handle paymentMethod)
         if (parsed.expenses) {
           this.expenses = parsed.expenses.map((exp: any) => ({
             ...exp,
-            date: new Date(exp.date)
+            date: new Date(exp.date),
+            paymentMethod: exp.paymentMethod || 'account' // NEW: Default to account for legacy data
           }));
           this.updateExpenseSummary();
         }
@@ -642,12 +716,13 @@ export class Page1Component implements OnInit {
           this.savingsHistory = parsed.savingsHistory;
         }
 
-        // Load filter settings
+        // Load filter settings (updated)
         if (parsed.filterSettings) {
           this.showFilters = parsed.filterSettings.showFilters || false;
           this.expenseFilterMonth = parsed.filterSettings.expenseFilterMonth || new Date().toISOString().substring(0, 7);
           this.expenseFilterCategory = parsed.filterSettings.expenseFilterCategory || '';
           this.expenseFilterType = parsed.filterSettings.expenseFilterType || '';
+          this.expenseFilterPayment = parsed.filterSettings.expenseFilterPayment || ''; // NEW: Load payment filter
         }
         
       } catch (e) {
@@ -808,7 +883,7 @@ export class Page1Component implements OnInit {
           '#FFCE56',
           '#4BC0C0',
           '#9966FF',
-          '#FF9F40'
+          '#FF9F40',
         ]
       }]
     };
@@ -889,7 +964,7 @@ export class Page1Component implements OnInit {
     return this.getMonthlyExpensesForMonth(this.selectedMonth);
   }
 
-  // Auto-generated investment expense methods (consolidated)
+  // Auto-generated investment expense methods (updated for payment method)
   generateAutomaticInvestmentExpenses() {
     const today = new Date();
     const currentMonth = today.getMonth();
@@ -915,7 +990,8 @@ export class Page1Component implements OnInit {
             description: `Auto: ${investment.type} Monthly Payment`,
             amount: investment.amount,
             date: new Date(currentYear, currentMonth, startDate.getDate()),
-            type: 'monthly'
+            type: 'monthly',
+            paymentMethod: 'account' // NEW: Auto expenses default to account
           };
           
           this.expenses.push(autoExpense);
@@ -955,7 +1031,8 @@ export class Page1Component implements OnInit {
             description: `Auto: ${investment.type} Monthly Payment`,
             amount: investment.amount,
             date: new Date(year, month, startDate.getDate()),
-            type: 'monthly'
+            type: 'monthly',
+            paymentMethod: 'account' // NEW: Auto expenses default to account
           };
           
           this.expenses.push(autoExpense);
@@ -1027,7 +1104,8 @@ export class Page1Component implements OnInit {
               description: `Auto: ${investment.type} Monthly Payment - Due Today`,
               amount: investment.amount,
               date: new Date(),
-              type: 'monthly'
+              type: 'monthly',
+              paymentMethod: 'account' // NEW: Auto expenses default to account
             };
             
             this.expenses.push(autoExpense);
