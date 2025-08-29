@@ -316,7 +316,7 @@
             <strong>Total Maturity Value:</strong>
             ₹{{ getTotalMaturityValue() | number : "1.0-0" }}
           </div>
-          <div class="total-item red">
+          <div class="total-item d_blue">
             <strong>Total Savings:</strong>
             ₹{{ getTotalSavings() | number : "1.0-0" }}
           </div>
@@ -573,7 +573,7 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let expense of expenses; let i = index" [class.cash-payment]="expense.paymentMethod === 'cash'" [class.account-payment]="expense.paymentMethod === 'account'">
+            <tr *ngFor="let expense of currentMonthExpenses; let i = index" [class.cash-payment]="expense.paymentMethod === 'cash'" [class.account-payment]="expense.paymentMethod === 'account'">
               <td>{{ i + 1 }}</td>
               <td>{{ expense.category }}</td>
               <td>{{ expense.description }}</td>
@@ -599,21 +599,21 @@
       <div class="summary-section">
         <h4>Expense Summary by Category</h4>
         <div class="category-breakdown">
-          <div class="category-item" *ngFor="let key of objectKeys(expensesByCategory)">
+          <div class="category-item" *ngFor="let key of objectKeys(expensesByCategoryThisMonth)">
             <span class="category-name">{{ key }}:</span>
-            <span class="category-amount">₹{{ expensesByCategory[key] | number : "1.0-0" }}</span>
+            <span class="category-amount">₹{{ expensesByCategoryThisMonth[key] | number : "1.0-0" }}</span>
           </div>
         </div>
         <div class="totals">
           <h4>Total Expenses</h4>
-          <div class="total-item">
+          <!-- <div class="total-item">
             <strong>Total Cash Expenses:</strong>
             ₹{{ getTotalCashExpenses() | number : "1.0-0" }}
           </div>
           <div class="total-item">
             <strong>Total Account Expenses:</strong>
             ₹{{ getTotalAccountExpenses() | number : "1.0-0" }}
-          </div>
+          </div> -->
           <div class="total-item">
             <strong>Total One-time Expenses:</strong>
             ₹{{ getTotalOneTimeExpenses() | number : "1.0-0" }}
@@ -623,7 +623,7 @@
             ₹{{ getTotalMonthlyExpenses() | number : "1.0-0" }}
           </div>
           <div class="total-item">
-            <strong>Total All Expenses:</strong>
+            <strong class="red">Total All Expenses:</strong>
             ₹{{ getTotalExpenses() | number : "1.0-0" }}
           </div>
         </div>

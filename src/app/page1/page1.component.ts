@@ -106,7 +106,7 @@ export class Page1Component implements OnInit {
     labels: [],
     datasets: [{ data: [] }]
   };
-  objectKeys = Object.keys;
+  // objectKeys = Object.keys;
 
   ngOnInit() {
     this.loadFromLocal();
@@ -122,6 +122,35 @@ export class Page1Component implements OnInit {
     this.setupPeriodicExpenseCheck();
     this.autoSaveRemainingAmount();
   }
+
+
+  // for table current month expense
+  get currentMonthExpenses() {
+  const now = new Date();
+  return this.expenses.filter(expense => {
+    const expenseDate = new Date(expense.date);
+    return (
+      expenseDate.getMonth() === now.getMonth() &&
+      expenseDate.getFullYear() === now.getFullYear()
+    );
+  });
+}
+
+// for template iteration
+objectKeys(obj: any) {
+  return Object.keys(obj);
+}
+
+get expensesByCategoryThisMonth() {
+  const breakdown: { [key: string]: number } = {};
+  this.currentMonthExpenses.forEach(exp => {
+    if (!breakdown[exp.category]) {
+      breakdown[exp.category] = 0;
+    }
+    breakdown[exp.category] += exp.amount;
+  });
+  return breakdown;
+}
 
   // Tab Management
   switchTab(tab: string) {
@@ -911,7 +940,7 @@ export class Page1Component implements OnInit {
   }
 
   getTotalInvested(): number {
-    return Object.keys(this.totalByType).reduce((sum, key) => sum + this.totalByType[key], 0) + this.getSavingsFromInvestments();
+    return Object.keys(this.totalByType).reduce((sum, key) => sum + this.totalByType[key], 0);
   }
 
   getTotalCurrentValue(): number {

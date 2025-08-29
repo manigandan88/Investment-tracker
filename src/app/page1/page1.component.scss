@@ -993,6 +993,9 @@ table {
         color: #28a745;
       }
 
+      .red{
+        color: red !important;
+      }
       // NEW: Account deduction styling
       &.account-deduction {
         color: #dc3545;
@@ -1016,8 +1019,9 @@ table {
       }
     }
 
-    .red {
+    .d_blue {
       color: #290bd4 !important;
+      font-weight: bold !important;
     }
   }
 }
@@ -1070,7 +1074,7 @@ table {
   }
 
   &.investments .amount {
-    color: #ff5200;
+    color: #ff0062;
   }
 
   &.remaining .amount {
