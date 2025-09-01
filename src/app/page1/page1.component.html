@@ -606,14 +606,7 @@
         </div>
         <div class="totals">
           <h4>Total Expenses</h4>
-          <!-- <div class="total-item">
-            <strong>Total Cash Expenses:</strong>
-            ₹{{ getTotalCashExpenses() | number : "1.0-0" }}
-          </div>
-          <div class="total-item">
-            <strong>Total Account Expenses:</strong>
-            ₹{{ getTotalAccountExpenses() | number : "1.0-0" }}
-          </div> -->
+        
           <div class="total-item">
             <strong>Total One-time Expenses:</strong>
             ₹{{ getTotalOneTimeExpenses() | number : "1.0-0" }}
@@ -708,32 +701,34 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let income of incomes; let i = index">
-              <td>{{ i + 1 }}</td>
-              <td>{{ income.source }}</td>
-              <td>{{ income.description }}</td>
-              <td class="currency income-amount">₹{{ income.amount | number : "1.0-0" }}</td>
-              <td>{{ income.date | date : "dd/MM/yyyy" }}</td>
-              <td>
-                <span class="income-type" [class]="income.type">
-                  {{ income.type === 'monthly' ? 'Monthly' : 'One-time' }}
-                </span>
-              </td>
-              <td>
-                <button class="delete-btn" (click)="deleteIncome(income.id)">Delete</button>
-              </td>
-            </tr>
+          <tr *ngFor="let income of currentMonthIncomes; let i = index">
+  <td>{{ i + 1 }}</td>
+  <td>{{ income.source }}</td>
+  <td>{{ income.description }}</td>
+  <td class="currency income-amount">₹{{ income.amount | number : "1.0-0" }}</td>
+  <td>{{ income.date | date : "dd/MM/yyyy" }}</td>
+  <td>
+    <span class="income-type" [class]="income.type">
+      {{ income.type === 'monthly' ? 'Monthly' : 'One-time' }}
+    </span>
+  </td>
+  <td>
+    <button class="delete-btn" (click)="deleteIncome(income.id)">Delete</button>
+  </td>
+</tr>
+
           </tbody>
         </table>
       </div>
       <div class="summary-section">
         <h4>Income Summary by Source</h4>
-        <div class="category-breakdown">
-          <div class="category-item" *ngFor="let key of objectKeys(incomesBySource)">
-            <span class="category-name">{{ key }}:</span>
-            <span class="category-amount">₹{{ incomesBySource[key] | number : "1.0-0" }}</span>
-          </div>
-        </div>
+      <div class="category-breakdown">
+  <div class="category-item" *ngFor="let key of objectKeys(currentMonthIncomesBySource)">
+    <span class="category-name">{{ key }}:</span>
+    <span class="category-amount">₹{{ currentMonthIncomesBySource[key] | number : "1.0-0" }}</span>
+  </div>
+</div>
+
         <div class="totals">
           <h4>Total Income</h4>
           <div class="total-item">

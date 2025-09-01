@@ -60,19 +60,22 @@ export class Page1Component implements OnInit {
     amount: 0,
     date: new Date(),
     type: 'one-time',
-    paymentMethod: 'cash' // NEW: Default to cash
+    paymentMethod: 'cash'
   };
   expenses: Expense[] = [];
   expensesByCategory: { [key: string]: number } = {};
   
-  // Filter properties
+  // Filter properties - Updated for current month default
   showFilters: boolean = false;
   expenseFilterMonth: string = new Date().toISOString().substring(0, 7);
   expenseFilterCategory: string = '';
   expenseFilterType: string = '';
-  expenseFilterPayment: string = ''; // NEW: Payment method filter
+  expenseFilterPayment: string = '';
   filteredExpenses: Expense[] = [];
   filteredExpensesByCategory: { [key: string]: number } = {};
+  
+  // NEW: Flag to track if custom filters are applied
+  hasCustomFilters: boolean = false;
 
   // Income properties
   incomeSources = [
@@ -106,7 +109,6 @@ export class Page1Component implements OnInit {
     labels: [],
     datasets: [{ data: [] }]
   };
-  // objectKeys = Object.keys;
 
   ngOnInit() {
     this.loadFromLocal();
@@ -118,39 +120,74 @@ export class Page1Component implements OnInit {
     
     this.generateAutomaticInvestmentExpenses();
     this.updateBudgetSummary();
-    this.filterExpensesByMonth();
+    this.applyCurrentMonthFilter(); // Apply current month filter by default
     this.setupPeriodicExpenseCheck();
     this.autoSaveRemainingAmount();
   }
 
+  // NEW: Method to apply current month filter by default
+  applyCurrentMonthFilter() {
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    this.expenseFilterMonth = currentMonth;
+    this.hasCustomFilters = false; // Reset custom filter flag
+    this.filterExpensesByMonth();
+  }
+
+  // NEW: Check if any custom filters are applied
+  checkForCustomFilters() {
+    const currentMonth = new Date().toISOString().substring(0, 7);
+    this.hasCustomFilters = 
+      this.expenseFilterMonth !== currentMonth ||
+      this.expenseFilterCategory !== '' ||
+      this.expenseFilterType !== '' ||
+      this.expenseFilterPayment !== '';
+  }
 
   // for table current month expense
   get currentMonthExpenses() {
-  const now = new Date();
-  return this.expenses.filter(expense => {
-    const expenseDate = new Date(expense.date);
-    return (
-      expenseDate.getMonth() === now.getMonth() &&
-      expenseDate.getFullYear() === now.getFullYear()
-    );
-  });
-}
+    const now = new Date();
+    return this.expenses.filter(expense => {
+      const expenseDate = new Date(expense.date);
+      return (
+        expenseDate.getMonth() === now.getMonth() &&
+        expenseDate.getFullYear() === now.getFullYear()
+      );
+    });
+  }
 
-// for template iteration
-objectKeys(obj: any) {
-  return Object.keys(obj);
-}
-
-get expensesByCategoryThisMonth() {
-  const breakdown: { [key: string]: number } = {};
-  this.currentMonthExpenses.forEach(exp => {
-    if (!breakdown[exp.category]) {
-      breakdown[exp.category] = 0;
+  // NEW: Get display expenses based on filter state
+  get displayExpenses() {
+    // If no custom filters are applied, show current month only
+    if (!this.hasCustomFilters) {
+      return this.currentMonthExpenses;
     }
-    breakdown[exp.category] += exp.amount;
-  });
-  return breakdown;
-}
+    // If custom filters are applied, show filtered results
+    return this.filteredExpenses;
+  }
+
+  // NEW: Get display expenses by category based on filter state
+  get displayExpensesByCategory() {
+    if (!this.hasCustomFilters) {
+      return this.expensesByCategoryThisMonth;
+    }
+    return this.filteredExpensesByCategory;
+  }
+
+  // for template iteration
+  objectKeys(obj: any) {
+    return Object.keys(obj);
+  }
+
+  get expensesByCategoryThisMonth() {
+    const breakdown: { [key: string]: number } = {};
+    this.currentMonthExpenses.forEach(exp => {
+      if (!breakdown[exp.category]) {
+        breakdown[exp.category] = 0;
+      }
+      breakdown[exp.category] += exp.amount;
+    });
+    return breakdown;
+  }
 
   // Tab Management
   switchTab(tab: string) {
@@ -160,9 +197,12 @@ get expensesByCategoryThisMonth() {
     }
   }
 
-  // Filter toggle methods
+  // Filter toggle methods - Updated
   toggleFilters() {
     this.showFilters = !this.showFilters;
+    if (this.showFilters) {
+      this.checkForCustomFilters();
+    }
     this.saveFilterSettings();
   }
 
@@ -170,8 +210,15 @@ get expensesByCategoryThisMonth() {
     this.expenseFilterMonth = new Date().toISOString().substring(0, 7);
     this.expenseFilterCategory = '';
     this.expenseFilterType = '';
-    this.expenseFilterPayment = ''; // NEW: Clear payment filter
-    this.filterExpensesByMonth();
+    this.expenseFilterPayment = '';
+    this.hasCustomFilters = false;
+    this.applyCurrentMonthFilter(); // Use the new method
+    this.saveFilterSettings();
+  }
+
+  // NEW: Reset to current month only
+  resetToCurrentMonth() {
+    this.applyCurrentMonthFilter();
     this.saveFilterSettings();
   }
 
@@ -269,25 +316,51 @@ get expensesByCategoryThisMonth() {
     return investment.durationMonths?.toString() || '12';
   }
 
-  // NEW: Payment Method Helper Methods
+  // Payment Method Helper Methods - Updated for display context
   getTotalCashExpenses(): number {
-    return this.expenses
+    const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return expensesToUse
       .filter(expense => expense.paymentMethod === 'cash')
       .reduce((sum, expense) => sum + expense.amount, 0);
   }
 
   getTotalAccountExpenses(): number {
-    return this.expenses
+    const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return expensesToUse
       .filter(expense => expense.paymentMethod === 'account')
       .reduce((sum, expense) => sum + expense.amount, 0);
   }
 
   getCashExpenseCount(): number {
-    return this.expenses.filter(expense => expense.paymentMethod === 'cash').length;
+    const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return expensesToUse.filter(expense => expense.paymentMethod === 'cash').length;
   }
 
   getAccountExpenseCount(): number {
-    return this.expenses.filter(expense => expense.paymentMethod === 'account').length;
+    const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return expensesToUse.filter(expense => expense.paymentMethod === 'account').length;
+  }
+
+  // NEW: Get total expenses based on current display context
+  getTotalDisplayExpenses(): number {
+    const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return expensesToUse.reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
+  // NEW: Get one-time expenses for current display
+  getTotalDisplayOneTimeExpenses(): number {
+    const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return expensesToUse
+      .filter(expense => expense.type === 'one-time')
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
+  // NEW: Get monthly expenses for current display
+  getTotalDisplayMonthlyExpenses(): number {
+    const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return expensesToUse
+      .filter(expense => expense.type === 'monthly')
+      .reduce((sum, expense) => sum + expense.amount, 0);
   }
 
   getFilteredCashExpenses(): number {
@@ -310,13 +383,6 @@ get expensesByCategoryThisMonth() {
     );
   }
 
-  getMonthlyAccountExpensesForMonth(month: string): number {
-    return this.calculateMonthlyAmount(
-      this.expenses.filter(exp => exp.paymentMethod === 'account'), 
-      month, 
-      'expense'
-    );
-  }
 
   getNetAccountBalance(): number {
     return this.getTotalIncome() - this.getTotalAccountExpenses();
@@ -354,7 +420,7 @@ get expensesByCategoryThisMonth() {
   }
 
   autoSaveRemainingAmount() {
-    const netAvailableAmount = this.getNetAvailableAmount(); // Changed to use net available
+    const netAvailableAmount = this.getNetAvailableAmount();
     if (netAvailableAmount > 0) {
       const existingIndex = this.savingsHistory.findIndex(entry => entry.month === this.selectedMonth);
       const newEntry = {
@@ -370,14 +436,13 @@ get expensesByCategoryThisMonth() {
       }
       this.saveToLocal();
     } else if (netAvailableAmount <= 0) {
-      // Remove savings entry if net available becomes negative or zero
       this.savingsHistory = this.savingsHistory.filter(entry => entry.month !== this.selectedMonth);
       this.saveToLocal();
     }
   }
 
   addRemainingToSavings() {
-    const netAvailableAmount = this.getNetAvailableAmount(); // Changed to use net available
+    const netAvailableAmount = this.getNetAvailableAmount();
     if (netAvailableAmount > 0) {
       this.autoSaveRemainingAmount();
       alert(`₹${netAvailableAmount.toLocaleString()} has been added to your savings for ${this.getMonthDisplay(this.selectedMonth)}!`);
@@ -428,7 +493,7 @@ get expensesByCategoryThisMonth() {
     this.saveToLocal();
     console.log('New expense added:', this.newExpense);
     this.updateExpenseSummary();
-    this.filterExpensesByMonth();
+    this.applyCurrentFilterLogic(); // Updated to use new filter logic
     
     // Reset form
     this.newExpense = {
@@ -438,7 +503,7 @@ get expensesByCategoryThisMonth() {
       amount: 0,
       date: new Date(),
       type: 'one-time',
-      paymentMethod: 'cash' // NEW: Reset to default
+      paymentMethod: 'cash'
     };
     this.updateBudgetSummary();
     this.autoSaveRemainingAmount();
@@ -449,7 +514,7 @@ get expensesByCategoryThisMonth() {
       this.expenses = this.expenses.filter(expense => expense.id !== expenseId);
       this.saveToLocal();
       this.updateExpenseSummary();
-      this.filterExpensesByMonth();
+      this.applyCurrentFilterLogic(); // Updated to use new filter logic
       this.updateBudgetSummary();
       this.autoSaveRemainingAmount();
     }
@@ -490,8 +555,33 @@ get expensesByCategoryThisMonth() {
     return Date.now().toString() + Math.random().toString(36).substr(2, 9);
   }
 
+  // NEW: Apply current filter logic based on state
+  applyCurrentFilterLogic() {
+    if (this.hasCustomFilters) {
+      this.filterExpensesByMonth();
+    } else {
+      this.updateCurrentMonthSummary();
+    }
+  }
+
+  // NEW: Update current month summary
+  updateCurrentMonthSummary() {
+    // Update the category breakdown for current month
+    this.expensesByCategoryThisMonth;
+  }
+
   // Expense filtering methods (updated)
   filterExpensesByMonth() {
+    this.checkForCustomFilters(); // Check if custom filters are applied
+    
+    if (!this.hasCustomFilters) {
+      // If no custom filters, use current month data
+      this.filteredExpenses = this.currentMonthExpenses;
+      this.updateFilteredExpenseSummary();
+      return;
+    }
+
+    // Apply custom filters
     if (!this.expenseFilterMonth) {
       this.filteredExpenses = [...this.expenses];
     } else {
@@ -512,7 +602,7 @@ get expensesByCategoryThisMonth() {
         
         const categoryMatch = !this.expenseFilterCategory || expense.category === this.expenseFilterCategory;
         const typeMatch = !this.expenseFilterType || expense.type === this.expenseFilterType;
-        const paymentMatch = !this.expenseFilterPayment || expense.paymentMethod === this.expenseFilterPayment; // NEW: Payment filter
+        const paymentMatch = !this.expenseFilterPayment || expense.paymentMethod === this.expenseFilterPayment;
         
         return dateMatch && categoryMatch && typeMatch && paymentMatch;
       });
@@ -550,38 +640,89 @@ get expensesByCategoryThisMonth() {
     });
   }
 
-  // Consolidated total calculation methods
-  getTotalOneTimeExpenses(): number {
-    return this.expenses
-      .filter(expense => expense.type === 'one-time')
-      .reduce((sum, expense) => sum + expense.amount, 0);
-  }
+  // Consolidated total calculation methods - Updated for all-time totals
 
-  getTotalMonthlyExpenses(): number {
-    return this.expenses
-      .filter(expense => expense.type === 'monthly')
-      .reduce((sum, expense) => sum + expense.amount, 0);
-  }
+  private isCurrentMonth(date: Date): boolean {
+  const now = new Date();
+  return (
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear()
+  );
+}
 
-  getTotalExpenses(): number {
-    return this.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-  }
+getTotalOneTimeExpenses(): number {
+  return this.expenses
+    .filter(expense => expense.type === 'one-time' && this.isCurrentMonth(new Date(expense.date)))
+    .reduce((sum, expense) => sum + expense.amount, 0);
+}
 
-  getTotalMonthlyIncome(): number {
-    return this.incomes
-      .filter(income => income.type === 'monthly')
-      .reduce((sum, income) => sum + income.amount, 0);
-  }
+getTotalMonthlyExpenses(): number {
+  return this.expenses
+    .filter(expense => expense.type === 'monthly' && this.isCurrentMonth(new Date(expense.date)))
+    .reduce((sum, expense) => sum + expense.amount, 0);
+}
 
-  getTotalOneTimeIncome(): number {
-    return this.incomes
-      .filter(income => income.type === 'one-time')
-      .reduce((sum, income) => sum + income.amount, 0);
-  }
+getTotalExpenses(): number {
+  return this.expenses
+    .filter(expense => this.isCurrentMonth(new Date(expense.date)))
+    .reduce((sum, expense) => sum + expense.amount, 0);
+}
 
-  getTotalIncome(): number {
-    return this.incomes.reduce((sum, income) => sum + income.amount, 0);
-  }
+getTotalMonthlyIncome(): number {
+  return this.incomes
+    .filter(income => income.type === 'monthly' && this.isCurrentMonth(new Date(income.date)))
+    .reduce((sum, income) => sum + income.amount, 0);
+}
+
+getTotalOneTimeIncome(): number {
+  return this.incomes
+    .filter(income => income.type === 'one-time' && this.isCurrentMonth(new Date(income.date)))
+    .reduce((sum, income) => sum + income.amount, 0);
+}
+
+getTotalIncome(): number {
+  return this.incomes
+    .filter(income => this.isCurrentMonth(new Date(income.date)))
+    .reduce((sum, income) => sum + income.amount, 0);
+}
+
+
+get currentMonthIncomesBySource() {
+  const now = new Date();
+  const month = now.getMonth();
+  const year = now.getFullYear();
+
+  const filtered = this.incomes.filter(income => {
+    const d = new Date(income.date);
+    return d.getMonth() === month && d.getFullYear() === year;
+  });
+
+  return filtered.reduce((acc, income) => {
+    acc[income.source] = (acc[income.source] || 0) + income.amount;
+    return acc;
+  }, {} as { [key: string]: number });
+}
+
+// objectKeys = Object.keys;
+
+
+
+
+
+get currentMonthIncomes() {
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+
+  return this.incomes.filter(income => {
+    const incomeDate = new Date(income.date);
+    return (
+      incomeDate.getMonth() === currentMonth &&
+      incomeDate.getFullYear() === currentYear
+    );
+  });
+}
+
 
   // Budget Methods (updated for payment methods)
   updateBudgetSummary() {
@@ -631,8 +772,23 @@ get expensesByCategoryThisMonth() {
     return this.calculateMonthlyAmount(this.incomes, month, 'income');
   }
 
-  getMonthlyExpensesForMonth(month: string): number {
-    return this.calculateMonthlyAmount(this.expenses, month, 'expense');
+getMonthlyExpensesForMonth(month: string): number {
+  const accountExpenses = this.getMonthlyAccountExpensesForMonth(month);
+  const cashExpenses = this.getMonthlyCashExpensesForMonth(month);
+  return accountExpenses + cashExpenses;
+}
+
+  getMonthlyAccountExpensesForMonth(month: string): number {
+    const [year, monthNum] = month.split('-').map(Number);
+    
+    return this.expenses
+      .filter(exp => {
+        const expDate = new Date(exp.date);
+        return exp.paymentMethod === 'account' &&
+               expDate.getFullYear() === year &&
+               expDate.getMonth() + 1 === monthNum;
+      })
+      .reduce((sum, exp) => sum + exp.amount, 0);
   }
 
   getMonthlyInvestmentsForMonth(month: string): number {
@@ -676,7 +832,8 @@ get expensesByCategoryThisMonth() {
         expenseFilterMonth: this.expenseFilterMonth,
         expenseFilterCategory: this.expenseFilterCategory,
         expenseFilterType: this.expenseFilterType,
-        expenseFilterPayment: this.expenseFilterPayment // NEW: Save payment filter
+        expenseFilterPayment: this.expenseFilterPayment,
+        hasCustomFilters: this.hasCustomFilters // NEW: Save custom filter state
       }
     };
     localStorage.setItem('financialData', JSON.stringify(data));
@@ -689,7 +846,8 @@ get expensesByCategoryThisMonth() {
       expenseFilterMonth: this.expenseFilterMonth,
       expenseFilterCategory: this.expenseFilterCategory,
       expenseFilterType: this.expenseFilterType,
-      expenseFilterPayment: this.expenseFilterPayment // NEW: Save payment filter
+      expenseFilterPayment: this.expenseFilterPayment,
+      hasCustomFilters: this.hasCustomFilters // NEW: Save custom filter state
     };
     localStorage.setItem('financialData', JSON.stringify(data));
   }
@@ -714,7 +872,7 @@ get expensesByCategoryThisMonth() {
           this.expenses = parsed.expenses.map((exp: any) => ({
             ...exp,
             date: new Date(exp.date),
-            paymentMethod: exp.paymentMethod || 'account' // NEW: Default to account for legacy data
+            paymentMethod: exp.paymentMethod || 'account'
           }));
           this.updateExpenseSummary();
         }
@@ -751,7 +909,8 @@ get expensesByCategoryThisMonth() {
           this.expenseFilterMonth = parsed.filterSettings.expenseFilterMonth || new Date().toISOString().substring(0, 7);
           this.expenseFilterCategory = parsed.filterSettings.expenseFilterCategory || '';
           this.expenseFilterType = parsed.filterSettings.expenseFilterType || '';
-          this.expenseFilterPayment = parsed.filterSettings.expenseFilterPayment || ''; // NEW: Load payment filter
+          this.expenseFilterPayment = parsed.filterSettings.expenseFilterPayment || '';
+          this.hasCustomFilters = parsed.filterSettings.hasCustomFilters || false;
         }
         
       } catch (e) {
@@ -768,7 +927,7 @@ get expensesByCategoryThisMonth() {
       this.saveToLocal();
       this.updateChart();
       this.updateExpenseSummary();
-      this.filterExpensesByMonth();
+      this.applyCurrentFilterLogic();
       this.updateBudgetSummary();
       this.autoSaveRemainingAmount();
     }
@@ -779,7 +938,7 @@ get expensesByCategoryThisMonth() {
       this.expenses = [];
       this.saveToLocal();
       this.updateExpenseSummary();
-      this.filterExpensesByMonth();
+      this.applyCurrentFilterLogic();
       this.updateBudgetSummary();
       this.autoSaveRemainingAmount();
     }
@@ -1020,7 +1179,7 @@ get expensesByCategoryThisMonth() {
             amount: investment.amount,
             date: new Date(currentYear, currentMonth, startDate.getDate()),
             type: 'monthly',
-            paymentMethod: 'account' // NEW: Auto expenses default to account
+            paymentMethod: 'account'
           };
           
           this.expenses.push(autoExpense);
@@ -1030,7 +1189,7 @@ get expensesByCategoryThisMonth() {
     });
     
     this.updateExpenseSummary();
-    this.filterExpensesByMonth();
+    this.applyCurrentFilterLogic();
     this.saveToLocal();
   }
 
@@ -1061,7 +1220,7 @@ get expensesByCategoryThisMonth() {
             amount: investment.amount,
             date: new Date(year, month, startDate.getDate()),
             type: 'monthly',
-            paymentMethod: 'account' // NEW: Auto expenses default to account
+            paymentMethod: 'account'
           };
           
           this.expenses.push(autoExpense);
@@ -1072,7 +1231,7 @@ get expensesByCategoryThisMonth() {
     });
     
     this.updateExpenseSummary();
-    this.filterExpensesByMonth();
+    this.applyCurrentFilterLogic();
     this.saveToLocal();
   }
 
@@ -1105,7 +1264,7 @@ get expensesByCategoryThisMonth() {
     });
     
     this.updateExpenseSummary();
-    this.filterExpensesByMonth();
+    this.applyCurrentFilterLogic();
   }
 
   checkAndGenerateInvestmentExpenses() {
@@ -1134,12 +1293,12 @@ get expensesByCategoryThisMonth() {
               amount: investment.amount,
               date: new Date(),
               type: 'monthly',
-              paymentMethod: 'account' // NEW: Auto expenses default to account
+              paymentMethod: 'account'
             };
             
             this.expenses.push(autoExpense);
             this.updateExpenseSummary();
-            this.filterExpensesByMonth();
+            this.applyCurrentFilterLogic();
             this.saveToLocal();
             
             alert(`Investment due today: ${investment.type} - ₹${investment.amount}`);
