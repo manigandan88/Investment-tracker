@@ -388,6 +388,7 @@
           <select [(ngModel)]="newExpense.paymentMethod" name="paymentMethod" required>
             <option value="cash">💵 Cash</option>
             <option value="account">🏦 Account</option>
+            <option value="savings">💰 Savings</option>
           </select>
           <small class="payment-hint">
             <span *ngIf="newExpense.paymentMethod === 'cash'" class="cash-hint">
@@ -395,6 +396,9 @@
             </span>
             <span *ngIf="newExpense.paymentMethod === 'account'" class="account-hint">
               💡 Account payments will reduce your monthly income
+            </span>
+            <span *ngIf="newExpense.paymentMethod === 'savings'" class="savings-hint">
+              💡 Savings payments will reduce your Total Savings balance
             </span>
           </small>
         </div>
@@ -456,6 +460,7 @@
             <option value="">All Payments</option>
             <option value="cash">Cash</option>
             <option value="account">Account</option>
+            <option value="savings">Savings</option>
           </select>
         </div>
       </div>
@@ -468,7 +473,9 @@
           Expense Details for {{ getMonthDisplay(expenseFilterMonth) }}
           <span *ngIf="expenseFilterCategory" class="filter-tag">{{ expenseFilterCategory }}</span>
           <span *ngIf="expenseFilterType" class="filter-tag">{{ expenseFilterType === 'monthly' ? 'Monthly' : 'One-time' }}</span>
-          <span *ngIf="expenseFilterPayment" class="filter-tag payment-tag">{{ expenseFilterPayment === 'cash' ? '💵 Cash' : '🏦 Account' }}</span>
+          <span *ngIf="expenseFilterPayment" class="filter-tag payment-tag" [class]="expenseFilterPayment">
+            {{ expenseFilterPayment === 'cash' ? '💵 Cash' : (expenseFilterPayment === 'account' ? '🏦 Account' : '💰 Savings') }}
+          </span>
         </h3>
       </div>
       
@@ -484,6 +491,10 @@
         <div class="stat-item">
           <span class="stat-label">Account Expenses:</span>
           <span class="stat-value account">₹{{ getFilteredAccountExpenses() | number : "1.0-0" }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Savings Expenses:</span>
+          <span class="stat-value savings">₹{{ getFilteredSavingsExpenses() | number : "1.0-0" }}</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">Number of Transactions:</span>
@@ -506,7 +517,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let expense of filteredExpenses; let i = index" [class.cash-payment]="expense.paymentMethod === 'cash'" [class.account-payment]="expense.paymentMethod === 'account'">
+            <tr *ngFor="let expense of filteredExpenses; let i = index" 
+                [class.cash-payment]="expense.paymentMethod === 'cash'" 
+                [class.account-payment]="expense.paymentMethod === 'account'"
+                [class.savings-payment]="expense.paymentMethod === 'savings'">
               <td>{{ i + 1 }}</td>
               <td>{{ expense.category }}</td>
               <td>{{ expense.description }}</td>
@@ -559,6 +573,11 @@
             <span class="amount">₹{{ getTotalAccountExpenses() | number : "1.0-0" }}</span>
             <small>{{ getAccountExpenseCount() }} transactions</small>
           </div>
+          <div class="payment-summary-item savings">
+            <h5>💰 Total Savings Expenses</h5>
+            <span class="amount">₹{{ getTotalSavingsExpenses() | number : "1.0-0" }}</span>
+            <small>{{ getSavingsExpenseCount() }} transactions</small>
+          </div>
         </div>
       </div>
 
@@ -577,7 +596,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let expense of currentMonthExpenses; let i = index" [class.cash-payment]="expense.paymentMethod === 'cash'" [class.account-payment]="expense.paymentMethod === 'account'">
+            <tr *ngFor="let expense of currentMonthExpenses; let i = index" 
+                [class.cash-payment]="expense.paymentMethod === 'cash'" 
+                [class.account-payment]="expense.paymentMethod === 'account'"
+                [class.savings-payment]="expense.paymentMethod === 'savings'">
               <td>{{ i + 1 }}</td>
               <td>{{ expense.category }}</td>
               <td>{{ expense.description }}</td>
@@ -590,7 +612,7 @@
               </td>
               <td>
                 <span class="payment-method" [class]="expense.paymentMethod">
-                  {{ expense.paymentMethod === 'cash' ? '💵 Cash' : '🏦 Account' }}
+                  {{ expense.paymentMethod === 'cash' ? '💵 Cash' : (expense.paymentMethod === 'account' ? '🏦 Account' : '💰 Savings') }}
                 </span>
               </td>
               <td>
@@ -800,12 +822,20 @@
             <h5>Cash Expenses Only</h5>
             <span class="amount">₹{{ getMonthlyCashExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
           </div>
+          <div class="budget-item savings-expenses">
+            <h5>Savings Expenses Only</h5>
+            <span class="amount">₹{{ getMonthlySavingsExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
+          </div>
+          <div class="budget-item fd-investments">
+            <h5>One-time FD Investments</h5>
+            <span class="amount">₹{{ getMonthlyFDInvestmentsForMonth(selectedMonth) | number : "1.0-0" }}</span>
+          </div>
           <div class="budget-item investments">
-            <h5>Monthly Investments</h5>
+            <h5>Monthly Investments (RD/PPF)</h5>
             <span class="amount">₹{{ getMonthlyInvestmentsForMonth(selectedMonth) | number : "1.0-0" }}</span>
           </div>
           <div class="budget-item remaining" [class.negative]="getRemainingAmount() < 0">
-            <h5>Net Available (Income - Account Expenses)</h5>
+            <h5>Net Account Balance (Income - Account Expenses)</h5>
             <span class="amount">₹{{ getNetAvailableAmount() | number : "1.0-0" }}</span>
           </div>
         </div>
@@ -814,6 +844,23 @@
         <div class="payment-breakdown">
           <h4>💰 Payment Method Analysis</h4>
           <div class="payment-analysis-grid">
+            <div class="analysis-card savings-card">
+              <h5>💰 Used from Savings</h5>
+              <div class="flow-details">
+                <div class="flow-item">
+                  <span class="label">Savings Expenses:</span>
+                  <span class="value">₹{{ getMonthlySavingsExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
+                </div>
+                <div class="flow-item">
+                  <span class="label">FD Investments:</span>
+                  <span class="valueHighlight">₹{{ getMonthlyFDInvestmentsForMonth(selectedMonth) | number : "1.0-0" }}</span>
+                </div>
+                <div class="flow-note">
+                  <small>💡 These items are deducted from your Total Savings pool</small>
+                </div>
+              </div>
+            </div>
+
             <div class="analysis-card cash-card">
               <h5>💵 Cash Flow</h5>
               <div class="flow-details">

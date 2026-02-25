@@ -331,6 +331,13 @@ export class Page1Component implements OnInit {
       .reduce((sum, expense) => sum + expense.amount, 0);
   }
 
+  getTotalSavingsExpenses(): number {
+    const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return expensesToUse
+      .filter(expense => expense.paymentMethod === 'savings')
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
   getCashExpenseCount(): number {
     const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
     return expensesToUse.filter(expense => expense.paymentMethod === 'cash').length;
@@ -339,6 +346,11 @@ export class Page1Component implements OnInit {
   getAccountExpenseCount(): number {
     const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
     return expensesToUse.filter(expense => expense.paymentMethod === 'account').length;
+  }
+
+  getSavingsExpenseCount(): number {
+    const expensesToUse = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return expensesToUse.filter(expense => expense.paymentMethod === 'savings').length;
   }
 
   // NEW: Get total expenses based on current display context
@@ -375,13 +387,12 @@ export class Page1Component implements OnInit {
       .reduce((sum, expense) => sum + expense.amount, 0);
   }
 
-  getMonthlyCashExpensesForMonth(month: string): number {
-    return this.calculateMonthlyAmount(
-      this.expenses.filter(exp => exp.paymentMethod === 'cash'), 
-      month, 
-      'expense'
-    );
+  getFilteredSavingsExpenses(): number {
+    return this.filteredExpenses
+      .filter(expense => expense.paymentMethod === 'savings')
+      .reduce((sum, expense) => sum + expense.amount, 0);
   }
+
 
 
   getNetAccountBalance(): number {
@@ -408,7 +419,21 @@ export class Page1Component implements OnInit {
 
   getTotalSavings(): number {
     const allAdditions = this.savingsHistory.reduce((sum, entry) => sum + entry.amount, 0);
-    return this.getSavingsFromInvestments() + allAdditions;
+    
+    // Set official start date for real-time deductions
+    const trackingStartDate = new Date('2026-02-25T00:00:00');
+    
+    // Deduct FD investments created from today onwards
+    const fdDeductions = this.investments
+      .filter(inv => inv.type === 'FD' && new Date(inv.startDate) >= trackingStartDate)
+      .reduce((sum, inv) => sum + inv.amount, 0);
+      
+    // Deduct expenses paid via Savings from today onwards
+    const savingsExpenseDeductions = this.expenses
+      .filter(exp => exp.paymentMethod === 'savings' && new Date(exp.date) >= trackingStartDate)
+      .reduce((sum, exp) => sum + exp.amount, 0);
+      
+    return this.getSavingsFromInvestments() + allAdditions - fdDeductions - savingsExpenseDeductions;
   }
 
   get savingsDisplay() {
@@ -728,14 +753,24 @@ get currentMonthIncomes() {
     const monthlyInvestments = this.getMonthlyInvestmentsForMonth(this.selectedMonth);
     const netAvailable = monthlyIncome - monthlyAccountExpenses;
 
-    // Update budget chart - showing account vs cash expenses
+    const monthlySavingsExpenses = this.getMonthlySavingsExpensesForMonth(this.selectedMonth);
+    const monthlyFDInvestments = this.getMonthlyFDInvestmentsForMonth(this.selectedMonth);
+
+    // Update budget chart - showing account vs cash vs savings
     this.budgetChartData = {
-      labels: ['Account Expenses', 'Cash Expenses', 'Investments', 'Net Available'],
+      labels: ['Account Expenses', 'Cash Expenses', 'Used from Savings', 'Investments', 'Net Available'],
       datasets: [{
-        data: [monthlyAccountExpenses, monthlyCashExpenses, monthlyInvestments, Math.max(0, netAvailable)],
+        data: [
+          monthlyAccountExpenses, 
+          monthlyCashExpenses, 
+          (monthlySavingsExpenses + monthlyFDInvestments), 
+          monthlyInvestments, 
+          Math.max(0, netAvailable)
+        ],
         backgroundColor: [
           '#FF6384', // Red for account expenses
           '#FF9F40', // Orange for cash expenses
+          '#FACC15', // Yellow for savings activity
           '#36A2EB', // Blue for investments
           '#4BC0C0'  // Teal for net available
         ]
@@ -781,6 +816,32 @@ getMonthlyExpensesForMonth(month: string): number {
       .reduce((sum, exp) => sum + exp.amount, 0);
   }
 
+  getMonthlyCashExpensesForMonth(month: string): number {
+    const [year, monthNum] = month.split('-').map(Number);
+    
+    return this.expenses
+      .filter(exp => {
+        const expDate = new Date(exp.date);
+        return exp.paymentMethod === 'cash' &&
+               expDate.getFullYear() === year &&
+               expDate.getMonth() + 1 === monthNum;
+      })
+      .reduce((sum, exp) => sum + exp.amount, 0);
+  }
+
+  getMonthlySavingsExpensesForMonth(month: string): number {
+    const [year, monthNum] = month.split('-').map(Number);
+    
+    return this.expenses
+      .filter(exp => {
+        const expDate = new Date(exp.date);
+        return exp.paymentMethod === 'savings' &&
+               expDate.getFullYear() === year &&
+               expDate.getMonth() + 1 === monthNum;
+      })
+      .reduce((sum, exp) => sum + exp.amount, 0);
+  }
+
   getMonthlyInvestmentsForMonth(month: string): number {
     const [year, monthNum] = month.split('-').map(Number);
     const selectedDate = new Date(year, monthNum - 1, 1);
@@ -796,6 +857,19 @@ getMonthlyExpensesForMonth(month: string): number {
         return false;
       })
       .reduce((sum, investment) => sum + investment.amount, 0);
+  }
+
+  getMonthlyFDInvestmentsForMonth(month: string): number {
+    const [year, monthNum] = month.split('-').map(Number);
+    
+    return this.investments
+      .filter(inv => {
+        const invDate = new Date(inv.startDate);
+        return inv.type === 'FD' &&
+               invDate.getFullYear() === year &&
+               invDate.getMonth() + 1 === monthNum;
+      })
+      .reduce((sum, inv) => sum + inv.amount, 0);
   }
 
   getRemainingAmount(): number {
