@@ -248,12 +248,14 @@
           <td class="actions-column">
             <!-- Edit Mode Actions -->
             <div *ngIf="isEditingInvestment(i)" class="edit-actions">
-              <button class="save-btn" (click)="saveEditInvestment()" title="Save Changes">
-                💾 Save
-              </button>
-              <button class="cancel-btn" (click)="cancelEditInvestment()" title="Cancel Edit">
-                ❌ Cancel
-              </button>
+              <div class="btn-row">
+                <button class="save-btn" (click)="saveEditInvestment()" title="Save Changes">
+                  💾 Save
+                </button>
+                <button class="cancel-btn" (click)="cancelEditInvestment()" title="Cancel Edit">
+                  ❌ Cancel
+                </button>
+              </div>
               
               <!-- Duration field for edit mode -->
               <div class="duration-edit" *ngIf="editingInvestment.type !== 'Savings'">
@@ -277,18 +279,20 @@
             
             <!-- Normal Mode Actions -->
             <div *ngIf="!isEditingInvestment(i)" class="normal-actions">
-              <button 
-                class="edit-btn" 
-                (click)="startEditInvestment(i)"
-                title="Edit Investment">
-                 Edit
-              </button>
-              <button 
-                class="delete-btn" 
-                (click)="deleteInvestment(i)"
-                title="Delete Investment">
-                 Delete
-              </button>
+              <div class="btn-row">
+                <button 
+                  class="edit-btn" 
+                  (click)="startEditInvestment(i)"
+                  title="Edit Investment">
+                   Edit
+                </button>
+                <button 
+                  class="delete-btn" 
+                  (click)="deleteInvestment(i)"
+                  title="Delete Investment">
+                   Delete
+                </button>
+              </div>
             </div>
           </td>
         </tr>
@@ -888,7 +892,6 @@
                 [class.current-month]="entry.month === selectedMonth">
                 <div class="history-info">
                   <span class="month-name">{{ getMonthDisplay(entry.month) }}</span>
-                  <span class="entry-source">From net available amount</span>
                 </div>
                 <div class="history-amount">
                   <span class="amount-value">+₹{{ entry.amount | number : "1.0-0" }}</span>
