@@ -594,11 +594,7 @@ export class Page1Component implements OnInit {
         
         let dateMatch = false;
         
-        if (expense.type === 'monthly') {
-          dateMatch = expenseYear <= year && (expenseYear < year || expenseMonth <= month);
-        } else {
-          dateMatch = expenseYear === year && expenseMonth === month;
-        }
+        dateMatch = expenseYear === year && expenseMonth === month;
         
         const categoryMatch = !this.expenseFilterCategory || expense.category === this.expenseFilterCategory;
         const typeMatch = !this.expenseFilterType || expense.type === this.expenseFilterType;
@@ -755,15 +751,9 @@ get currentMonthIncomes() {
     
     return items
       .filter(item => {
-        if (item.type === 'monthly') {
-          const itemDate = new Date(item.date);
-          return itemDate.getFullYear() < year || 
-                 (itemDate.getFullYear() === year && itemDate.getMonth() <= monthNum - 1);
-        } else {
-          const itemDate = new Date(item.date);
-          return itemDate.getFullYear() === year && 
-                 itemDate.getMonth() === monthNum - 1;
-        }
+        const itemDate = new Date(item.date);
+        return itemDate.getFullYear() === year && 
+               itemDate.getMonth() === monthNum - 1;
       })
       .reduce((sum, item) => sum + item.amount, 0);
   }
