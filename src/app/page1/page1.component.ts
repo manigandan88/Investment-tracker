@@ -800,7 +800,8 @@ get currentMonthIncomes() {
 getMonthlyExpensesForMonth(month: string): number {
   const accountExpenses = this.getMonthlyAccountExpensesForMonth(month);
   const cashExpenses = this.getMonthlyCashExpensesForMonth(month);
-  return accountExpenses + cashExpenses;
+   const savingsExpenses = this.getMonthlySavingsExpensesForMonth(month);
+  return accountExpenses + cashExpenses + savingsExpenses;
 }
 
   getMonthlyAccountExpensesForMonth(month: string): number {

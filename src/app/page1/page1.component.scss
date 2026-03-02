@@ -1137,6 +1137,13 @@ h4 { font-size: 1.25rem; }
   .amount { font-size: 1.5rem; font-weight: 700; color: var(--text-main); }
 }
 
+.history-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 8px; /* For scrollbar space */
+  margin-top: 16px;
+}
+
 .history-item {
   display: flex;
   justify-content: space-between;

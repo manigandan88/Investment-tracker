@@ -811,7 +811,7 @@
             <span class="amount">₹{{ getMonthlyIncomeForMonth(selectedMonth) | number : "1.0-0" }}</span>
           </div>
           <div class="budget-item expenses">
-            <h5>Total Monthly Expenses</h5>
+            <h5>Total This Month Expenses</h5>
             <span class="amount">₹{{ getMonthlyExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
           </div>
           <div class="budget-item account-expenses">
@@ -935,7 +935,7 @@
             <div class="history-list">
               <div 
                 class="history-item" 
-                *ngFor="let entry of savingsHistory.slice().reverse().slice(0, 5)"
+                *ngFor="let entry of savingsHistory.slice().reverse()"
                 [class.current-month]="entry.month === selectedMonth">
                 <div class="history-info">
                   <span class="month-name">{{ getMonthDisplay(entry.month) }}</span>
