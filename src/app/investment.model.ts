@@ -25,6 +25,7 @@ export interface MonthlyIncome {
   amount: number;
   date: Date;
   type: 'monthly' | 'one-time';
+  receivedVia?: 'cash' | 'account'; // NEW: deposit method (defaults to account)
 }
 
 export interface MonthlyBudget {

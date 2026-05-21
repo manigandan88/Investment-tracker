@@ -110,10 +110,17 @@ export class Page1Component implements OnInit {
     description: '',
     amount: 0,
     date: new Date(),
-    type: 'one-time'
+    type: 'one-time',
+    receivedVia: 'account'
   };
   incomes: MonthlyIncome[] = [];
   incomesBySource: { [key: string]: number } = {};
+
+  // Hot Cash properties
+  initialHotCash: number = 1000;
+  editingInitialHotCash: boolean = false;
+  tempInitialHotCash: number = 1000;
+  hotCashStartDate: Date = new Date('2026-05-21T00:00:00');
 
   // Budget and Savings properties
   activeTab: string = 'investments';
@@ -408,14 +415,84 @@ export class Page1Component implements OnInit {
       .reduce((sum, expense) => sum + expense.amount, 0);
   }
 
+  // Hot Cash helper methods
+  getHotCashIncome(): number {
+    return this.incomes
+      .filter(inc => inc.receivedVia === 'cash' && new Date(inc.date) >= this.hotCashStartDate)
+      .reduce((sum, inc) => sum + inc.amount, 0);
+  }
 
+  getHotCashExpenses(): number {
+    return this.expenses
+      .filter(exp => exp.paymentMethod === 'cash' && new Date(exp.date) >= this.hotCashStartDate)
+      .reduce((sum, exp) => sum + exp.amount, 0);
+  }
+
+  getHotCashBalance(): number {
+    return this.initialHotCash + this.getHotCashIncome() - this.getHotCashExpenses();
+  }
+
+  getMonthlyAccountIncomeForMonth(month: string): number {
+    const [year, monthNum] = month.split('-').map(Number);
+    return this.incomes
+      .filter(inc => {
+        const incDate = new Date(inc.date);
+        return (!inc.receivedVia || inc.receivedVia === 'account') &&
+               incDate.getFullYear() === year &&
+               incDate.getMonth() === monthNum - 1;
+      })
+      .reduce((sum, inc) => sum + inc.amount, 0);
+  }
+
+  getMonthlyCashIncomeForMonth(month: string): number {
+    const [year, monthNum] = month.split('-').map(Number);
+    return this.incomes
+      .filter(inc => {
+        const incDate = new Date(inc.date);
+        return inc.receivedVia === 'cash' &&
+               incDate.getFullYear() === year &&
+               incDate.getMonth() === monthNum - 1;
+      })
+      .reduce((sum, inc) => sum + inc.amount, 0);
+  }
+
+  getTotalAccountIncome(): number {
+    return this.incomes
+      .filter(inc => (!inc.receivedVia || inc.receivedVia === 'account') && this.isCurrentMonth(new Date(inc.date)))
+      .reduce((sum, inc) => sum + inc.amount, 0);
+  }
+
+  getTotalCashIncome(): number {
+    return this.incomes
+      .filter(inc => inc.receivedVia === 'cash' && this.isCurrentMonth(new Date(inc.date)))
+      .reduce((sum, inc) => sum + inc.amount, 0);
+  }
+
+  // Hot Cash Edit starting balance handlers
+  startEditInitialHotCash() {
+    this.tempInitialHotCash = this.initialHotCash;
+    this.editingInitialHotCash = true;
+  }
+
+  saveInitialHotCash() {
+    if (this.tempInitialHotCash >= 0) {
+      this.initialHotCash = this.tempInitialHotCash;
+      this.saveToLocal();
+      this.editingInitialHotCash = false;
+      this.updateBudgetSummary();
+    }
+  }
+
+  cancelEditInitialHotCash() {
+    this.editingInitialHotCash = false;
+  }
 
   getNetAccountBalance(): number {
-    return this.getTotalIncome() - this.getTotalAccountExpenses();
+    return this.getTotalAccountIncome() - this.getTotalAccountExpenses();
   }
 
   getNetAvailableAmount(): number {
-    return this.getMonthlyIncomeForMonth(this.selectedMonth) - 
+    return this.getMonthlyAccountIncomeForMonth(this.selectedMonth) - 
            this.getMonthlyAccountExpensesForMonth(this.selectedMonth);
   }
 
@@ -583,6 +660,9 @@ export class Page1Component implements OnInit {
   // Income Methods
   addIncome() {
     this.newIncome.id = this.generateId();
+    if (!this.newIncome.receivedVia) {
+      this.newIncome.receivedVia = 'account';
+    }
     this.incomes.push({ ...this.newIncome });
     this.saveToLocal();
     console.log('New income added:', this.newIncome);
@@ -595,7 +675,8 @@ export class Page1Component implements OnInit {
       description: '',
       amount: 0,
       date: new Date(),
-      type: 'monthly'
+      type: 'monthly',
+      receivedVia: 'account'
     };
     this.updateBudgetSummary();
     this.autoSaveRemainingAmount();
@@ -785,11 +866,11 @@ get currentMonthIncomes() {
 
   // Budget Methods (updated for payment methods)
   updateBudgetSummary() {
-    const monthlyIncome = this.getMonthlyIncomeForMonth(this.selectedMonth);
+    const monthlyAccountIncome = this.getMonthlyAccountIncomeForMonth(this.selectedMonth);
     const monthlyAccountExpenses = this.getMonthlyAccountExpensesForMonth(this.selectedMonth);
     const monthlyCashExpenses = this.getMonthlyCashExpensesForMonth(this.selectedMonth);
     const monthlyInvestments = this.getMonthlyInvestmentsForMonth(this.selectedMonth);
-    const netAvailable = monthlyIncome - monthlyAccountExpenses;
+    const netAvailable = monthlyAccountIncome - monthlyAccountExpenses;
 
     const monthlySavingsExpenses = this.getMonthlySavingsExpensesForMonth(this.selectedMonth);
     const monthlyFDInvestments = this.getMonthlyFDInvestmentsForMonth(this.selectedMonth);
@@ -806,11 +887,11 @@ get currentMonthIncomes() {
           Math.max(0, netAvailable)
         ],
         backgroundColor: [
-          '#FF6384', // Red for account expenses
-          '#FF9F40', // Orange for cash expenses
-          '#FACC15', // Yellow for savings activity
-          '#36A2EB', // Blue for investments
-          '#4BC0C0'  // Teal for net available
+          '#f43f5e', // Premium Rose for account expenses
+          '#10b981', // Premium Emerald Green for cash expenses (matching Hot Cash theme)
+          '#f59e0b', // Premium Golden Amber for savings activity
+          '#4f46e5', // Premium Indigo for investments
+          '#0ea5e9'  // Premium Sky Blue for net available
         ]
       }]
     };
@@ -931,6 +1012,7 @@ getMonthlyExpensesForMonth(month: string): number {
       incomes: this.incomes,
       savingsHistory: this.savingsHistory,
       categoryBudgets: this.categoryBudgets, // NEW: Save category budgets
+      initialHotCash: this.initialHotCash, // NEW: Save initial hot cash balance
       filterSettings: {
         showFilters: this.showFilters,
         expenseFilterMonth: this.expenseFilterMonth,
@@ -981,13 +1063,21 @@ getMonthlyExpensesForMonth(month: string): number {
           this.updateExpenseSummary();
         }
         
-        // Load incomes
+        // Load incomes (updated with receivedVia default)
         if (parsed.incomes) {
           this.incomes = parsed.incomes.map((inc: any) => ({
             ...inc,
-            date: new Date(inc.date)
+            date: new Date(inc.date),
+            receivedVia: inc.receivedVia || 'account'
           }));
           this.updateIncomeSummary();
+        }
+
+        // Load initial hot cash
+        if (parsed.initialHotCash !== undefined) {
+          this.initialHotCash = parsed.initialHotCash;
+        } else {
+          this.initialHotCash = 1000;
         }
 
         // Load savings data (handle legacy currentSavings)

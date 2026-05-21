@@ -334,6 +334,50 @@
 
   <!-- Expense Tab -->
   <div *ngIf="activeTab === 'expenses'">
+    <!-- Hot Cash Balance Widget -->
+    <div class="hot-cash-widget-card">
+      <div class="widget-header">
+        <div class="widget-title-area">
+          <span class="widget-icon">💵</span>
+          <div class="widget-titles">
+            <h4>Hot Cash Balance</h4>
+            <small>Physical cash currently in hand</small>
+          </div>
+        </div>
+        <div class="widget-balance-badge" [class.negative]="getHotCashBalance() < 0">
+          ₹{{ getHotCashBalance() | number : "1.0-0" }}
+        </div>
+      </div>
+      
+      <div class="widget-details-row">
+        <!-- Starting Balance configuration -->
+        <div class="widget-detail-item initial-cash">
+          <span class="detail-label">Starting Cash (as of 21-05-2026):</span>
+          
+          <div *ngIf="!editingInitialHotCash" class="detail-value-display">
+            <span class="detail-value">₹{{ initialHotCash | number : "1.0-0" }}</span>
+            <button type="button" class="btn-edit-inline" (click)="startEditInitialHotCash()" title="Edit starting balance">✏️ Edit</button>
+          </div>
+          
+          <div *ngIf="editingInitialHotCash" class="detail-value-edit">
+            <input type="number" [(ngModel)]="tempInitialHotCash" class="inline-edit-input" min="0" />
+            <button type="button" class="btn-save-inline" (click)="saveInitialHotCash()" title="Save Starting Balance">💾 Save</button>
+            <button type="button" class="btn-cancel-inline" (click)="cancelEditInitialHotCash()" title="Cancel">❌</button>
+          </div>
+        </div>
+        
+        <div class="widget-detail-item plus-cash">
+          <span class="detail-label">Cash Incomes (from 21-05-2026):</span>
+          <span class="detail-value positive">+₹{{ getHotCashIncome() | number : "1.0-0" }}</span>
+        </div>
+        
+        <div class="widget-detail-item minus-cash">
+          <span class="detail-label">Cash Expenses (from 21-05-2026):</span>
+          <span class="detail-value negative">-₹{{ getHotCashExpenses() | number : "1.0-0" }}</span>
+        </div>
+      </div>
+    </div>
+
     <form (ngSubmit)="addExpense()" class="expense-form">
       <div class="form-row">
         <div class="form-group">
@@ -392,7 +436,7 @@
           </select>
           <small class="payment-hint">
             <span *ngIf="newExpense.paymentMethod === 'cash'" class="cash-hint">
-              💡 Cash payments don't affect your account balance
+              💡 Cash payments will reduce your Hot Cash balance (from 21-05-2026 onwards)
             </span>
             <span *ngIf="newExpense.paymentMethod === 'account'" class="account-hint">
               💡 Account payments will reduce your monthly income
@@ -767,6 +811,7 @@
           />
         </div>
       </div>
+
       <div class="form-row">
         <div class="form-group">
           <label>Date:</label>
@@ -784,7 +829,23 @@
             <option value="one-time">One-time Income</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>Received Via:</label>
+          <select [(ngModel)]="newIncome.receivedVia" name="incomeReceivedVia" required>
+            <option value="account">🏦 Account</option>
+            <option value="cash">💵 Cash (Hot Cash)</option>
+          </select>
+          <small class="payment-hint">
+            <span *ngIf="newIncome.receivedVia === 'cash'" class="cash-hint">
+              💡 Cash income increases your Hot Cash balance
+            </span>
+            <span *ngIf="newIncome.receivedVia === 'account'" class="account-hint">
+              💡 Account income increases your bank balance
+            </span>
+          </small>
+        </div>
       </div>
+
       <div class="btn-cnt">
         <button class="income-btn" type="submit">Add Income</button>
         <button type="button" (click)="clearAllIncomes()" class="clear-btn">Clear All Incomes</button>
@@ -804,6 +865,7 @@
               <th>Amount</th>
               <th>Date</th>
               <th>Type</th>
+              <th>Received Via</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -817,6 +879,11 @@
   <td>
     <span class="income-type" [class]="income.type">
       {{ income.type === 'monthly' ? 'Monthly' : 'One-time' }}
+    </span>
+  </td>
+  <td>
+    <span class="payment-method" [class]="income.receivedVia || 'account'">
+      {{ (income.receivedVia === 'cash') ? '💵 Cash' : '🏦 Account' }}
     </span>
   </td>
   <td>
@@ -849,6 +916,14 @@
           <div class="total-item">
             <strong>Total All Income:</strong>
             ₹{{ getTotalIncome() | number : "1.0-0" }}
+          </div>
+          <div class="total-item">
+            <strong>Total Account Income:</strong>
+            ₹{{ getTotalAccountIncome() | number : "1.0-0" }}
+          </div>
+          <div class="total-item">
+            <strong>Total Cash (Hot Cash) Income:</strong>
+            ₹{{ getTotalCashIncome() | number : "1.0-0" }}
           </div>
           <div class="total-item account-deduction">
             <strong>Account Deductions (Expenses):</strong>
@@ -972,14 +1047,24 @@
             </div>
 
             <div class="analysis-card cash-card">
-              <h5>💵 Cash Flow</h5>
+              <h5>💵 Hot Cash Flow (Month)</h5>
               <div class="flow-details">
                 <div class="flow-item">
+                  <span class="label">Cash Income:</span>
+                  <span class="value positive">+₹{{ getMonthlyCashIncomeForMonth(selectedMonth) | number : "1.0-0" }}</span>
+                </div>
+                <div class="flow-item">
                   <span class="label">Cash Expenses:</span>
-                  <span class="value">₹{{ getMonthlyCashExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
+                  <span class="value negative">-₹{{ getMonthlyCashExpensesForMonth(selectedMonth) | number : "1.0-0" }}</span>
+                </div>
+                <div class="flow-item total">
+                  <span class="label">Net Cash Flow:</span>
+                  <span class="value" [class.negative]="(getMonthlyCashIncomeForMonth(selectedMonth) - getMonthlyCashExpensesForMonth(selectedMonth)) < 0">
+                    ₹{{ (getMonthlyCashIncomeForMonth(selectedMonth) - getMonthlyCashExpensesForMonth(selectedMonth)) | number : "1.0-0" }}
+                  </span>
                 </div>
                 <div class="flow-note">
-                  <small>💡 Cash expenses don't affect your account balance</small>
+                  <small>💡 Total cash in hand is <strong>₹{{ getHotCashBalance() | number : "1.0-0" }}</strong></small>
                 </div>
               </div>
             </div>
@@ -988,8 +1073,8 @@
               <h5>🏦 Account Flow</h5>
               <div class="flow-details">
                 <div class="flow-item">
-                  <span class="label">Income:</span>
-                  <span class="value positive">+₹{{ getMonthlyIncomeForMonth(selectedMonth) | number : "1.0-0" }}</span>
+                  <span class="label">Account Income:</span>
+                  <span class="value positive">+₹{{ getMonthlyAccountIncomeForMonth(selectedMonth) | number : "1.0-0" }}</span>
                 </div>
                 <div class="flow-item">
                   <span class="label">Account Expenses:</span>
