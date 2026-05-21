@@ -1983,6 +1983,88 @@ tr {
     &:hover .cell-tooltip {
       display: block;
     }
+
+    @media (max-width: 768px) {
+      /* Adjust tooltip alignment on small screens to prevent viewport overflow */
+      
+      /* Column 1 (Sunday) */
+      &:nth-child(7n+8) {
+        .cell-tooltip {
+          left: 0;
+          transform: none;
+          &::after {
+            left: 22px;
+            transform: none;
+          }
+        }
+      }
+
+      /* Column 2 (Monday) */
+      &:nth-child(7n+9) {
+        .cell-tooltip {
+          left: -40px;
+          transform: none;
+          &::after {
+            left: 62px;
+            transform: none;
+          }
+        }
+      }
+
+      /* Column 3 (Tuesday) */
+      &:nth-child(7n+10) {
+        .cell-tooltip {
+          left: -80px;
+          transform: none;
+          &::after {
+            left: 102px;
+            transform: none;
+          }
+        }
+      }
+
+      /* Column 5 (Thursday) */
+      &:nth-child(7n+12) {
+        .cell-tooltip {
+          left: auto;
+          right: -80px;
+          transform: none;
+          &::after {
+            left: auto;
+            right: 102px;
+            transform: none;
+          }
+        }
+      }
+
+      /* Column 6 (Friday) */
+      &:nth-child(7n+13) {
+        .cell-tooltip {
+          left: auto;
+          right: -40px;
+          transform: none;
+          &::after {
+            left: auto;
+            right: 62px;
+            transform: none;
+          }
+        }
+      }
+
+      /* Column 7 (Saturday) */
+      &:nth-child(7n+14) {
+        .cell-tooltip {
+          left: auto;
+          right: 0;
+          transform: none;
+          &::after {
+            left: auto;
+            right: 22px;
+            transform: none;
+          }
+        }
+      }
+    }
   }
 }
 
