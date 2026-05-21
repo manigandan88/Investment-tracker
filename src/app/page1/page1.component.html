@@ -334,50 +334,6 @@
 
   <!-- Expense Tab -->
   <div *ngIf="activeTab === 'expenses'">
-    <!-- Hot Cash Balance Widget -->
-    <div class="hot-cash-widget-card">
-      <div class="widget-header">
-        <div class="widget-title-area">
-          <span class="widget-icon">💵</span>
-          <div class="widget-titles">
-            <h4>Hot Cash Balance</h4>
-            <small>Physical cash currently in hand</small>
-          </div>
-        </div>
-        <div class="widget-balance-badge" [class.negative]="getHotCashBalance() < 0">
-          ₹{{ getHotCashBalance() | number : "1.0-0" }}
-        </div>
-      </div>
-      
-      <div class="widget-details-row">
-        <!-- Starting Balance configuration -->
-        <div class="widget-detail-item initial-cash">
-          <span class="detail-label">Starting Cash (as of 21-05-2026):</span>
-          
-          <div *ngIf="!editingInitialHotCash" class="detail-value-display">
-            <span class="detail-value">₹{{ initialHotCash | number : "1.0-0" }}</span>
-            <button type="button" class="btn-edit-inline" (click)="startEditInitialHotCash()" title="Edit starting balance">✏️ Edit</button>
-          </div>
-          
-          <div *ngIf="editingInitialHotCash" class="detail-value-edit">
-            <input type="number" [(ngModel)]="tempInitialHotCash" class="inline-edit-input" min="0" />
-            <button type="button" class="btn-save-inline" (click)="saveInitialHotCash()" title="Save Starting Balance">💾 Save</button>
-            <button type="button" class="btn-cancel-inline" (click)="cancelEditInitialHotCash()" title="Cancel">❌</button>
-          </div>
-        </div>
-        
-        <div class="widget-detail-item plus-cash">
-          <span class="detail-label">Cash Incomes (from 21-05-2026):</span>
-          <span class="detail-value positive">+₹{{ getHotCashIncome() | number : "1.0-0" }}</span>
-        </div>
-        
-        <div class="widget-detail-item minus-cash">
-          <span class="detail-label">Cash Expenses (from 21-05-2026):</span>
-          <span class="detail-value negative">-₹{{ getHotCashExpenses() | number : "1.0-0" }}</span>
-        </div>
-      </div>
-    </div>
-
     <form (ngSubmit)="addExpense()" class="expense-form">
       <div class="form-row">
         <div class="form-group">
@@ -780,6 +736,50 @@
 
   <!-- Monthly Income Tab -->
   <div *ngIf="activeTab === 'income'">
+    <!-- Hot Cash Balance Widget -->
+    <div class="hot-cash-widget-card">
+      <div class="widget-header">
+        <div class="widget-title-area">
+          <span class="widget-icon">💵</span>
+          <div class="widget-titles">
+            <h4>Hot Cash Balance</h4>
+            <small>Physical cash currently in hand</small>
+          </div>
+        </div>
+        <div class="widget-balance-badge" [class.negative]="getHotCashBalance() < 0">
+          ₹{{ getHotCashBalance() | number : "1.0-0" }}
+        </div>
+      </div>
+      
+      <div class="widget-details-row">
+        <!-- Starting Balance configuration -->
+        <div class="widget-detail-item initial-cash">
+          <span class="detail-label">Starting Cash (as of 21-05-2026):</span>
+          
+          <div *ngIf="!editingInitialHotCash" class="detail-value-display">
+            <span class="detail-value">₹{{ initialHotCash | number : "1.0-0" }}</span>
+            <button type="button" class="btn-edit-inline" (click)="startEditInitialHotCash()" title="Edit starting balance">✏️ Edit</button>
+          </div>
+          
+          <div *ngIf="editingInitialHotCash" class="detail-value-edit">
+            <input type="number" [(ngModel)]="tempInitialHotCash" class="inline-edit-input" min="0" />
+            <button type="button" class="btn-save-inline" (click)="saveInitialHotCash()" title="Save Starting Balance">💾 Save</button>
+            <button type="button" class="btn-cancel-inline" (click)="cancelEditInitialHotCash()" title="Cancel">❌</button>
+          </div>
+        </div>
+        
+        <div class="widget-detail-item plus-cash">
+          <span class="detail-label">Cash Incomes (from 21-05-2026):</span>
+          <span class="detail-value positive">+₹{{ getHotCashIncome() | number : "1.0-0" }}</span>
+        </div>
+        
+        <div class="widget-detail-item minus-cash">
+          <span class="detail-label">Cash Expenses (from 21-05-2026):</span>
+          <span class="detail-value negative">-₹{{ getHotCashExpenses() | number : "1.0-0" }}</span>
+        </div>
+      </div>
+    </div>
+
     <form (ngSubmit)="addIncome()" class="income-form">
       <div class="form-row">
         <div class="form-group">
