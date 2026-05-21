@@ -64,7 +64,7 @@ export class Page1Component implements OnInit {
   };
   expenses: Expense[] = [];
   expensesByCategory: { [key: string]: number } = {};
-  
+
   // Filter properties - Updated for current month default
   showFilters: boolean = false;
   expenseFilterMonth: string = new Date().toISOString().substring(0, 7);
@@ -73,7 +73,7 @@ export class Page1Component implements OnInit {
   expenseFilterPayment: string = '';
   filteredExpenses: Expense[] = [];
   filteredExpensesByCategory: { [key: string]: number } = {};
-  
+
   // NEW: Flag to track if custom filters are applied
   hasCustomFilters: boolean = false;
 
@@ -125,8 +125,8 @@ export class Page1Component implements OnInit {
   // Budget and Savings properties
   activeTab: string = 'investments';
   selectedMonth: string = new Date().toISOString().substring(0, 7);
-  savingsHistory: Array<{month: string, amount: number, source: string}> = [];
-  
+  savingsHistory: Array<{ month: string, amount: number, source: string }> = [];
+
   budgetChartData: ChartData<'pie', number[], string | string[]> = {
     labels: [],
     datasets: [{ data: [] }]
@@ -134,12 +134,12 @@ export class Page1Component implements OnInit {
 
   ngOnInit() {
     this.loadFromLocal();
-    
+
     // Add 'Investment' to expense categories if not present
     if (!this.expenseCategories.includes('Investment')) {
       this.expenseCategories.push('Investment');
     }
-    
+
     this.generateAutomaticInvestmentExpenses();
     this.updateBudgetSummary();
     this.applyCurrentMonthFilter(); // Apply current month filter by default
@@ -158,7 +158,7 @@ export class Page1Component implements OnInit {
   // NEW: Check if any custom filters are applied
   checkForCustomFilters() {
     const currentMonth = new Date().toISOString().substring(0, 7);
-    this.hasCustomFilters = 
+    this.hasCustomFilters =
       this.expenseFilterMonth !== currentMonth ||
       this.expenseFilterCategory !== '' ||
       this.expenseFilterType !== '' ||
@@ -271,21 +271,21 @@ export class Page1Component implements OnInit {
 
       // Update the investment
       this.investments[this.editingInvestmentIndex] = { ...this.editingInvestment };
-      
+
       // Regenerate auto expenses if it's a monthly investment
       this.cleanupInactiveInvestmentExpenses();
       if (this.editingInvestment.type === 'RD' || this.editingInvestment.type === 'PPF') {
         this.generateAutomaticInvestmentExpenses();
       }
-      
+
       this.saveToLocal();
       this.updateChart();
       this.updateBudgetSummary();
       this.autoSaveRemainingAmount();
-      
+
       // Reset edit mode
       this.cancelEditInvestment();
-      
+
       alert('Investment updated successfully!');
     }
   }
@@ -293,27 +293,27 @@ export class Page1Component implements OnInit {
   deleteInvestment(index: number) {
     const investment = this.investments[index];
     const confirmMessage = `Are you sure you want to delete this ${investment.type} investment of ₹${investment.amount.toLocaleString()}?`;
-    
+
     if (confirm(confirmMessage)) {
       // Remove the investment
       this.investments.splice(index, 1);
-      
+
       // Clean up related auto-generated expenses
       this.cleanupInactiveInvestmentExpenses();
-      
+
       // Update everything
       this.saveToLocal();
       this.updateChart();
       this.updateBudgetSummary();
       this.autoSaveRemainingAmount();
-      
+
       // Reset edit mode if we were editing this investment
       if (this.editingInvestmentIndex === index) {
         this.cancelEditInvestment();
       } else if (this.editingInvestmentIndex > index) {
         this.editingInvestmentIndex--;
       }
-      
+
       alert('Investment deleted successfully!');
     }
   }
@@ -438,8 +438,8 @@ export class Page1Component implements OnInit {
       .filter(inc => {
         const incDate = new Date(inc.date);
         return (!inc.receivedVia || inc.receivedVia === 'account') &&
-               incDate.getFullYear() === year &&
-               incDate.getMonth() === monthNum - 1;
+          incDate.getFullYear() === year &&
+          incDate.getMonth() === monthNum - 1;
       })
       .reduce((sum, inc) => sum + inc.amount, 0);
   }
@@ -450,8 +450,8 @@ export class Page1Component implements OnInit {
       .filter(inc => {
         const incDate = new Date(inc.date);
         return inc.receivedVia === 'cash' &&
-               incDate.getFullYear() === year &&
-               incDate.getMonth() === monthNum - 1;
+          incDate.getFullYear() === year &&
+          incDate.getMonth() === monthNum - 1;
       })
       .reduce((sum, inc) => sum + inc.amount, 0);
   }
@@ -492,8 +492,8 @@ export class Page1Component implements OnInit {
   }
 
   getNetAvailableAmount(): number {
-    return this.getMonthlyAccountIncomeForMonth(this.selectedMonth) - 
-           this.getMonthlyAccountExpensesForMonth(this.selectedMonth);
+    return this.getMonthlyAccountIncomeForMonth(this.selectedMonth) -
+      this.getMonthlyAccountExpensesForMonth(this.selectedMonth);
   }
 
   getIncomeUtilizationPercentage(): number {
@@ -531,20 +531,20 @@ export class Page1Component implements OnInit {
 
   getTotalSavings(): number {
     const allAdditions = this.savingsHistory.reduce((sum, entry) => sum + entry.amount, 0);
-    
+
     // Set official start date for real-time deductions
     const trackingStartDate = new Date('2026-02-25T00:00:00');
-    
+
     // Deduct FD investments created from today onwards
     const fdDeductions = this.investments
       .filter(inv => inv.type === 'FD' && new Date(inv.startDate) >= trackingStartDate)
       .reduce((sum, inv) => sum + inv.amount, 0);
-      
+
     // Deduct expenses paid via Savings from today onwards
     const savingsExpenseDeductions = this.expenses
       .filter(exp => exp.paymentMethod === 'savings' && new Date(exp.date) >= trackingStartDate)
       .reduce((sum, exp) => sum + exp.amount, 0);
-      
+
     return this.getSavingsFromInvestments() + allAdditions - fdDeductions - savingsExpenseDeductions;
   }
 
@@ -565,7 +565,7 @@ export class Page1Component implements OnInit {
         amount: netAvailableAmount,
         source: 'remaining'
       };
-      
+
       if (existingIndex >= 0) {
         this.savingsHistory[existingIndex] = newEntry;
       } else {
@@ -593,18 +593,18 @@ export class Page1Component implements OnInit {
     if (this.newInvestment.type === 'PPF') {
       this.newInvestment.durationMonths = 180; // 15 years
     }
-    
+
     this.investments.push({ ...this.newInvestment });
-    
+
     // Generate automatic expenses for the new investment if it's monthly
     if (this.newInvestment.type === 'RD' || this.newInvestment.type === 'PPF') {
       this.generateAutomaticInvestmentExpenses();
     }
-    
+
     this.saveToLocal();
     console.log('New investment added:', this.newInvestment);
     this.updateChart();
-    
+
     // Reset form
     this.newInvestment = {
       type: 'FD',
@@ -620,18 +620,18 @@ export class Page1Component implements OnInit {
   // Expense Methods (updated)
   addExpense() {
     this.newExpense.id = this.generateId();
-    
+
     // Ensure paymentMethod is set (default to 'cash' if undefined)
     if (!this.newExpense.paymentMethod) {
       this.newExpense.paymentMethod = 'cash';
     }
-    
+
     this.expenses.push({ ...this.newExpense });
     this.saveToLocal();
     console.log('New expense added:', this.newExpense);
     this.updateExpenseSummary();
     this.applyCurrentFilterLogic(); // Updated to use new filter logic
-    
+
     // Reset form
     this.newExpense = {
       id: '',
@@ -667,7 +667,7 @@ export class Page1Component implements OnInit {
     this.saveToLocal();
     console.log('New income added:', this.newIncome);
     this.updateIncomeSummary();
-    
+
     // Reset form
     this.newIncome = {
       id: '',
@@ -715,7 +715,7 @@ export class Page1Component implements OnInit {
   // Expense filtering methods (updated)
   filterExpensesByMonth() {
     this.checkForCustomFilters(); // Check if custom filters are applied
-    
+
     if (!this.hasCustomFilters) {
       // If no custom filters, use current month data
       this.filteredExpenses = this.currentMonthExpenses;
@@ -729,24 +729,24 @@ export class Page1Component implements OnInit {
       this.filteredExpenses = [...this.expenses];
     } else {
       const [year, month] = this.expenseFilterMonth.split('-').map(Number);
-      
+
       this.filteredExpenses = this.expenses.filter(expense => {
         const expenseDate = new Date(expense.date);
         const expenseYear = expenseDate.getFullYear();
         const expenseMonth = expenseDate.getMonth() + 1;
-        
+
         let dateMatch = false;
-        
+
         dateMatch = expenseYear === year && expenseMonth === month;
-        
+
         const categoryMatch = !this.expenseFilterCategory || expense.category === this.expenseFilterCategory;
         const typeMatch = !this.expenseFilterType || expense.type === this.expenseFilterType;
         const paymentMatch = !this.expenseFilterPayment || expense.paymentMethod === this.expenseFilterPayment;
-        
+
         return dateMatch && categoryMatch && typeMatch && paymentMatch;
       });
     }
-    
+
     this.updateFilteredExpenseSummary();
     this.saveFilterSettings();
     this.generateCalendar(); // NEW: Trigger calendar updates
@@ -755,7 +755,7 @@ export class Page1Component implements OnInit {
   updateFilteredExpenseSummary() {
     this.filteredExpensesByCategory = {};
     this.filteredExpenses.forEach(expense => {
-      this.filteredExpensesByCategory[expense.category] = 
+      this.filteredExpensesByCategory[expense.category] =
         (this.filteredExpensesByCategory[expense.category] || 0) + expense.amount;
     });
   }
@@ -767,7 +767,7 @@ export class Page1Component implements OnInit {
   updateExpenseSummary() {
     this.expensesByCategory = {};
     this.expenses.forEach(expense => {
-      this.expensesByCategory[expense.category] = 
+      this.expensesByCategory[expense.category] =
         (this.expensesByCategory[expense.category] || 0) + expense.amount;
     });
   }
@@ -775,7 +775,7 @@ export class Page1Component implements OnInit {
   updateIncomeSummary() {
     this.incomesBySource = {};
     this.incomes.forEach(income => {
-      this.incomesBySource[income.source] = 
+      this.incomesBySource[income.source] =
         (this.incomesBySource[income.source] || 0) + income.amount;
     });
   }
@@ -783,85 +783,85 @@ export class Page1Component implements OnInit {
   // Consolidated total calculation methods - Updated for all-time totals
 
   private isCurrentMonth(date: Date): boolean {
-  const now = new Date();
-  return (
-    date.getMonth() === now.getMonth() &&
-    date.getFullYear() === now.getFullYear()
-  );
-}
-
-getTotalOneTimeExpenses(): number {
-  return this.expenses
-    .filter(expense => expense.type === 'one-time' && this.isCurrentMonth(new Date(expense.date)))
-    .reduce((sum, expense) => sum + expense.amount, 0);
-}
-
-getTotalMonthlyExpenses(): number {
-  return this.expenses
-    .filter(expense => expense.type === 'monthly' && this.isCurrentMonth(new Date(expense.date)))
-    .reduce((sum, expense) => sum + expense.amount, 0);
-}
-
-getTotalExpenses(): number {
-  return this.expenses
-    .filter(expense => this.isCurrentMonth(new Date(expense.date)))
-    .reduce((sum, expense) => sum + expense.amount, 0);
-}
-
-getTotalMonthlyIncome(): number {
-  return this.incomes
-    .filter(income => income.type === 'monthly' && this.isCurrentMonth(new Date(income.date)))
-    .reduce((sum, income) => sum + income.amount, 0);
-}
-
-getTotalOneTimeIncome(): number {
-  return this.incomes
-    .filter(income => income.type === 'one-time' && this.isCurrentMonth(new Date(income.date)))
-    .reduce((sum, income) => sum + income.amount, 0);
-}
-
-getTotalIncome(): number {
-  return this.incomes
-    .filter(income => this.isCurrentMonth(new Date(income.date)))
-    .reduce((sum, income) => sum + income.amount, 0);
-}
-
-
-get currentMonthIncomesBySource() {
-  const now = new Date();
-  const month = now.getMonth();
-  const year = now.getFullYear();
-
-  const filtered = this.incomes.filter(income => {
-    const d = new Date(income.date);
-    return d.getMonth() === month && d.getFullYear() === year;
-  });
-
-  return filtered.reduce((acc, income) => {
-    acc[income.source] = (acc[income.source] || 0) + income.amount;
-    return acc;
-  }, {} as { [key: string]: number });
-}
-
-// objectKeys = Object.keys;
-
-
-
-
-
-get currentMonthIncomes() {
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
-
-  return this.incomes.filter(income => {
-    const incomeDate = new Date(income.date);
+    const now = new Date();
     return (
-      incomeDate.getMonth() === currentMonth &&
-      incomeDate.getFullYear() === currentYear
+      date.getMonth() === now.getMonth() &&
+      date.getFullYear() === now.getFullYear()
     );
-  });
-}
+  }
+
+  getTotalOneTimeExpenses(): number {
+    return this.expenses
+      .filter(expense => expense.type === 'one-time' && this.isCurrentMonth(new Date(expense.date)))
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
+  getTotalMonthlyExpenses(): number {
+    return this.expenses
+      .filter(expense => expense.type === 'monthly' && this.isCurrentMonth(new Date(expense.date)))
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
+  getTotalExpenses(): number {
+    return this.expenses
+      .filter(expense => this.isCurrentMonth(new Date(expense.date)))
+      .reduce((sum, expense) => sum + expense.amount, 0);
+  }
+
+  getTotalMonthlyIncome(): number {
+    return this.incomes
+      .filter(income => income.type === 'monthly' && this.isCurrentMonth(new Date(income.date)))
+      .reduce((sum, income) => sum + income.amount, 0);
+  }
+
+  getTotalOneTimeIncome(): number {
+    return this.incomes
+      .filter(income => income.type === 'one-time' && this.isCurrentMonth(new Date(income.date)))
+      .reduce((sum, income) => sum + income.amount, 0);
+  }
+
+  getTotalIncome(): number {
+    return this.incomes
+      .filter(income => this.isCurrentMonth(new Date(income.date)))
+      .reduce((sum, income) => sum + income.amount, 0);
+  }
+
+
+  get currentMonthIncomesBySource() {
+    const now = new Date();
+    const month = now.getMonth();
+    const year = now.getFullYear();
+
+    const filtered = this.incomes.filter(income => {
+      const d = new Date(income.date);
+      return d.getMonth() === month && d.getFullYear() === year;
+    });
+
+    return filtered.reduce((acc, income) => {
+      acc[income.source] = (acc[income.source] || 0) + income.amount;
+      return acc;
+    }, {} as { [key: string]: number });
+  }
+
+  // objectKeys = Object.keys;
+
+
+
+
+
+  get currentMonthIncomes() {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    return this.incomes.filter(income => {
+      const incomeDate = new Date(income.date);
+      return (
+        incomeDate.getMonth() === currentMonth &&
+        incomeDate.getFullYear() === currentYear
+      );
+    });
+  }
 
 
   // Budget Methods (updated for payment methods)
@@ -880,10 +880,10 @@ get currentMonthIncomes() {
       labels: ['Account Expenses', 'Cash Expenses', 'Used from Savings', 'Investments', 'Net Available'],
       datasets: [{
         data: [
-          monthlyAccountExpenses, 
-          monthlyCashExpenses, 
-          (monthlySavingsExpenses + monthlyFDInvestments), 
-          monthlyInvestments, 
+          monthlyAccountExpenses,
+          monthlyCashExpenses,
+          (monthlySavingsExpenses + monthlyFDInvestments),
+          monthlyInvestments,
           Math.max(0, netAvailable)
         ],
         backgroundColor: [
@@ -902,12 +902,12 @@ get currentMonthIncomes() {
 
   private calculateMonthlyAmount(items: any[], month: string, type: 'income' | 'expense'): number {
     const [year, monthNum] = month.split('-').map(Number);
-    
+
     return items
       .filter(item => {
         const itemDate = new Date(item.date);
-        return itemDate.getFullYear() === year && 
-               itemDate.getMonth() === monthNum - 1;
+        return itemDate.getFullYear() === year &&
+          itemDate.getMonth() === monthNum - 1;
       })
       .reduce((sum, item) => sum + item.amount, 0);
   }
@@ -916,48 +916,48 @@ get currentMonthIncomes() {
     return this.calculateMonthlyAmount(this.incomes, month, 'income');
   }
 
-getMonthlyExpensesForMonth(month: string): number {
-  const accountExpenses = this.getMonthlyAccountExpensesForMonth(month);
-  const cashExpenses = this.getMonthlyCashExpensesForMonth(month);
-   const savingsExpenses = this.getMonthlySavingsExpensesForMonth(month);
-  return accountExpenses + cashExpenses + savingsExpenses;
-}
+  getMonthlyExpensesForMonth(month: string): number {
+    const accountExpenses = this.getMonthlyAccountExpensesForMonth(month);
+    const cashExpenses = this.getMonthlyCashExpensesForMonth(month);
+    const savingsExpenses = this.getMonthlySavingsExpensesForMonth(month);
+    return accountExpenses + cashExpenses + savingsExpenses;
+  }
 
   getMonthlyAccountExpensesForMonth(month: string): number {
     const [year, monthNum] = month.split('-').map(Number);
-    
+
     return this.expenses
       .filter(exp => {
         const expDate = new Date(exp.date);
         return exp.paymentMethod === 'account' &&
-               expDate.getFullYear() === year &&
-               expDate.getMonth() + 1 === monthNum;
+          expDate.getFullYear() === year &&
+          expDate.getMonth() + 1 === monthNum;
       })
       .reduce((sum, exp) => sum + exp.amount, 0);
   }
 
   getMonthlyCashExpensesForMonth(month: string): number {
     const [year, monthNum] = month.split('-').map(Number);
-    
+
     return this.expenses
       .filter(exp => {
         const expDate = new Date(exp.date);
         return exp.paymentMethod === 'cash' &&
-               expDate.getFullYear() === year &&
-               expDate.getMonth() + 1 === monthNum;
+          expDate.getFullYear() === year &&
+          expDate.getMonth() + 1 === monthNum;
       })
       .reduce((sum, exp) => sum + exp.amount, 0);
   }
 
   getMonthlySavingsExpensesForMonth(month: string): number {
     const [year, monthNum] = month.split('-').map(Number);
-    
+
     return this.expenses
       .filter(exp => {
         const expDate = new Date(exp.date);
         return exp.paymentMethod === 'savings' &&
-               expDate.getFullYear() === year &&
-               expDate.getMonth() + 1 === monthNum;
+          expDate.getFullYear() === year &&
+          expDate.getMonth() + 1 === monthNum;
       })
       .reduce((sum, exp) => sum + exp.amount, 0);
   }
@@ -965,13 +965,13 @@ getMonthlyExpensesForMonth(month: string): number {
   getMonthlyInvestmentsForMonth(month: string): number {
     const [year, monthNum] = month.split('-').map(Number);
     const selectedDate = new Date(year, monthNum - 1, 1);
-    
+
     return this.investments
       .filter(investment => {
         if (investment.type === 'PPF' || investment.type === 'RD') {
           const startDate = new Date(investment.startDate);
           const endDate = this.invEndDate(startDate, investment.durationMonths);
-          
+
           return selectedDate >= startDate && selectedDate <= endDate;
         }
         return false;
@@ -981,20 +981,20 @@ getMonthlyExpensesForMonth(month: string): number {
 
   getMonthlyFDInvestmentsForMonth(month: string): number {
     const [year, monthNum] = month.split('-').map(Number);
-    
+
     return this.investments
       .filter(inv => {
         const invDate = new Date(inv.startDate);
         return inv.type === 'FD' &&
-               invDate.getFullYear() === year &&
-               invDate.getMonth() + 1 === monthNum;
+          invDate.getFullYear() === year &&
+          invDate.getMonth() + 1 === monthNum;
       })
       .reduce((sum, inv) => sum + inv.amount, 0);
   }
 
   getRemainingAmount(): number {
-    return this.getMonthlyIncomeForMonth(this.selectedMonth) - 
-           this.getMonthlyExpensesForMonth(this.selectedMonth);
+    return this.getMonthlyIncomeForMonth(this.selectedMonth) -
+      this.getMonthlyExpensesForMonth(this.selectedMonth);
   }
 
   getMonthDisplay(month: string): string {
@@ -1043,7 +1043,7 @@ getMonthlyExpensesForMonth(month: string): number {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        
+
         // Load investments
         if (parsed.investments) {
           this.investments = parsed.investments.map((inv: any) => ({
@@ -1052,7 +1052,7 @@ getMonthlyExpensesForMonth(month: string): number {
           }));
           this.updateChart();
         }
-        
+
         // Load expenses (updated to handle paymentMethod)
         if (parsed.expenses) {
           this.expenses = parsed.expenses.map((exp: any) => ({
@@ -1062,7 +1062,7 @@ getMonthlyExpensesForMonth(month: string): number {
           }));
           this.updateExpenseSummary();
         }
-        
+
         // Load incomes (updated with receivedVia default)
         if (parsed.incomes) {
           this.incomes = parsed.incomes.map((inc: any) => ({
@@ -1113,7 +1113,7 @@ getMonthlyExpensesForMonth(month: string): number {
           this.expenseFilterPayment = parsed.filterSettings.expenseFilterPayment || '';
           this.hasCustomFilters = parsed.filterSettings.hasCustomFilters || false;
         }
-        
+
       } catch (e) {
         console.error('Failed to load saved data', e);
       }
@@ -1167,14 +1167,14 @@ getMonthlyExpensesForMonth(month: string): number {
   getMonthsElapsed(startDate: Date): number {
     const now = new Date();
     const start = new Date(startDate);
-    
+
     let months = (now.getFullYear() - start.getFullYear()) * 12;
     months += now.getMonth() - start.getMonth();
-    
+
     if (now.getDate() >= start.getDate()) {
       months += 1;
     }
-    
+
     return Math.max(0, months);
   }
 
@@ -1186,7 +1186,7 @@ getMonthlyExpensesForMonth(month: string): number {
     const r = investment.interestRate / 100;
     const monthsElapsed = this.getMonthsElapsed(investment.startDate);
     const totalMonths = investment.type === 'PPF' ? 180 : investment.durationMonths;
-    
+
     let current = 0, maturity = 0, invested = 0;
 
     switch (investment.type) {
@@ -1194,24 +1194,24 @@ getMonthlyExpensesForMonth(month: string): number {
         invested = investment.amount;
         const yearsElapsed = monthsElapsed / 12;
         const totalYears = totalMonths / 12;
-        
+
         current = investment.amount * Math.pow(1 + r, yearsElapsed);
         maturity = investment.amount * Math.pow(1 + r, totalYears);
         break;
 
       case 'RD':
         invested = investment.amount * monthsElapsed;
-        
+
         current = 0;
         for (let month = 1; month <= monthsElapsed; month++) {
           const monthsEarningInterest = monthsElapsed - month;
-          current += investment.amount * Math.pow(1 + r/12, monthsEarningInterest);
+          current += investment.amount * Math.pow(1 + r / 12, monthsEarningInterest);
         }
-        
+
         maturity = 0;
         for (let month = 1; month <= totalMonths; month++) {
           const monthsEarningInterest = totalMonths - month + 1;
-          maturity += investment.amount * Math.pow(1 + r/12, monthsEarningInterest - 1);
+          maturity += investment.amount * Math.pow(1 + r / 12, monthsEarningInterest - 1);
         }
         break;
 
@@ -1222,16 +1222,16 @@ getMonthlyExpensesForMonth(month: string): number {
         const yearlyContributions = investment.amount * 12;
         const yearsElapsedPPF = Math.floor(monthsElapsedPPF / 12);
         const remainingMonths = monthsElapsedPPF % 12;
-        
+
         current = 0;
-        
+
         for (let year = 1; year <= yearsElapsedPPF; year++) {
           const yearsEarningInterest = yearsElapsedPPF - year + 1;
           current += yearlyContributions * Math.pow(1 + r, yearsEarningInterest);
         }
 
         current += investment.amount * remainingMonths;
-        
+
         maturity = 0;
         for (let year = 1; year <= 15; year++) {
           const yearsEarningInterest = 15 - year + 1;
@@ -1302,7 +1302,9 @@ getMonthlyExpensesForMonth(month: string): number {
   }
 
   getTotalInvested(): number {
-    return Object.keys(this.totalByType).reduce((sum, key) => sum + this.totalByType[key], 0);
+    return Object.keys(this.totalByType)
+      .filter(key => key !== 'Savings')
+      .reduce((sum, key) => sum + this.totalByType[key], 0);
   }
 
   getTotalCurrentValue(): number {
@@ -1324,7 +1326,7 @@ getMonthlyExpensesForMonth(month: string): number {
 
     const dueDay = startDate.getDate();
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
     let current = new Date(startDate);
 
@@ -1332,8 +1334,8 @@ getMonthlyExpensesForMonth(month: string): number {
       current.getFullYear() < today.getFullYear() ||
       (current.getFullYear() === today.getFullYear() && current.getMonth() < today.getMonth()) ||
       (current.getFullYear() === today.getFullYear() &&
-       current.getMonth() === today.getMonth() &&
-       dueDay <= today.getDate())
+        current.getMonth() === today.getMonth() &&
+        dueDay <= today.getDate())
     ) {
       const monthName = monthNames[current.getMonth()];
       const year = current.getFullYear().toString().slice(-2);
@@ -1347,8 +1349,8 @@ getMonthlyExpensesForMonth(month: string): number {
   }
 
   hasMonthlyBreakdown(investment: Investment): boolean {
-    return (investment.type === 'RD' || investment.type === 'PPF') && 
-           this.getMonthsElapsed(investment.startDate) > 0;
+    return (investment.type === 'RD' || investment.type === 'PPF') &&
+      this.getMonthsElapsed(investment.startDate) > 0;
   }
 
   getTotalMonthlySpend(): number {
@@ -1360,20 +1362,20 @@ getMonthlyExpensesForMonth(month: string): number {
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
-    
-    const monthlyInvestments = this.investments.filter(inv => 
+
+    const monthlyInvestments = this.investments.filter(inv =>
       inv.type === 'RD' || inv.type === 'PPF'
     );
 
     monthlyInvestments.forEach(investment => {
       const startDate = new Date(investment.startDate);
       const endDate = this.invEndDate(startDate, investment.durationMonths);
-      
+
       if (today >= startDate && today <= endDate) {
         const expenseId = `auto_${investment.type}_${currentYear}_${currentMonth}_${this.investments.indexOf(investment)}`;
-        
+
         const existingExpense = this.expenses.find(exp => exp.id === expenseId);
-        
+
         if (!existingExpense) {
           const autoExpense: Expense = {
             id: expenseId,
@@ -1384,20 +1386,20 @@ getMonthlyExpensesForMonth(month: string): number {
             type: 'monthly',
             paymentMethod: 'account'
           };
-          
+
           this.expenses.push(autoExpense);
           console.log(`Auto-generated expense for ${investment.type}:`, autoExpense);
         }
       }
     });
-    
+
     this.updateExpenseSummary();
     this.applyCurrentFilterLogic();
     this.saveToLocal();
   }
 
   generateHistoricalInvestmentExpenses() {
-    const monthlyInvestments = this.investments.filter(inv => 
+    const monthlyInvestments = this.investments.filter(inv =>
       inv.type === 'RD' || inv.type === 'PPF'
     );
 
@@ -1405,16 +1407,16 @@ getMonthlyExpensesForMonth(month: string): number {
       const startDate = new Date(investment.startDate);
       const endDate = this.invEndDate(startDate, investment.durationMonths);
       const today = new Date();
-      
+
       let currentDate = new Date(startDate);
-      
+
       while (currentDate <= endDate && currentDate <= today) {
         const year = currentDate.getFullYear();
         const month = currentDate.getMonth();
-        
+
         const expenseId = `auto_${investment.type}_${year}_${month}_${this.investments.indexOf(investment)}`;
         const existingExpense = this.expenses.find(exp => exp.id === expenseId);
-        
+
         if (!existingExpense) {
           const autoExpense: Expense = {
             id: expenseId,
@@ -1425,14 +1427,14 @@ getMonthlyExpensesForMonth(month: string): number {
             type: 'monthly',
             paymentMethod: 'account'
           };
-          
+
           this.expenses.push(autoExpense);
         }
-        
+
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
     });
-    
+
     this.updateExpenseSummary();
     this.applyCurrentFilterLogic();
     this.saveToLocal();
@@ -1441,53 +1443,53 @@ getMonthlyExpensesForMonth(month: string): number {
   cleanupInactiveInvestmentExpenses() {
     // Get all auto-generated expenses
     const autoExpenses = this.expenses.filter(expense => expense.id.startsWith('auto_'));
-    
+
     // Remove expenses that don't have corresponding investments
     this.expenses = this.expenses.filter(expense => {
       if (!expense.id.startsWith('auto_')) {
         return true; // Keep non-auto expenses
       }
-      
+
       // For auto expenses, check if the source investment still exists
       const parts = expense.id.split('_');
       if (parts.length >= 4) {
         const investmentIndex = parseInt(parts[parts.length - 1]);
         const investment = this.investments[investmentIndex];
-        
+
         if (!investment) {
           return false; // Remove if investment doesn't exist
         }
-        
+
         // Check if investment type matches
         const expenseType = parts[1]; // RD or PPF
         return investment.type === expenseType;
       }
-      
+
       return false; // Remove malformed auto expenses
     });
-    
+
     this.updateExpenseSummary();
     this.applyCurrentFilterLogic();
   }
 
   checkAndGenerateInvestmentExpenses() {
     const today = new Date();
-    
+
     this.investments.forEach(investment => {
       if (investment.type === 'RD' || investment.type === 'PPF') {
         const startDate = new Date(investment.startDate);
         const endDate = this.invEndDate(startDate, investment.durationMonths);
-        
-        const isDueToday = today.getDate() === startDate.getDate() && 
-                          today >= startDate && today <= endDate;
-        
+
+        const isDueToday = today.getDate() === startDate.getDate() &&
+          today >= startDate && today <= endDate;
+
         if (isDueToday) {
           const currentYear = today.getFullYear();
           const currentMonth = today.getMonth();
           const expenseId = `auto_${investment.type}_${currentYear}_${currentMonth}_${this.investments.indexOf(investment)}`;
-          
+
           const existingExpense = this.expenses.find(exp => exp.id === expenseId);
-          
+
           if (!existingExpense) {
             const autoExpense: Expense = {
               id: expenseId,
@@ -1498,12 +1500,12 @@ getMonthlyExpensesForMonth(month: string): number {
               type: 'monthly',
               paymentMethod: 'account'
             };
-            
+
             this.expenses.push(autoExpense);
             this.updateExpenseSummary();
             this.applyCurrentFilterLogic();
             this.saveToLocal();
-            
+
             alert(`Investment due today: ${investment.type} - ₹${investment.amount}`);
           }
         }
@@ -1513,7 +1515,7 @@ getMonthlyExpensesForMonth(month: string): number {
 
   setupPeriodicExpenseCheck() {
     this.checkAndGenerateInvestmentExpenses();
-    
+
     setInterval(() => {
       this.checkAndGenerateInvestmentExpenses();
     }, 24 * 60 * 60 * 1000);
@@ -1535,14 +1537,14 @@ getMonthlyExpensesForMonth(month: string): number {
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
-    
+
     return this.expenses
       .filter(expense => {
         if (!expense.id.startsWith('auto_')) return false;
-        
+
         const expenseDate = new Date(expense.date);
-        return expenseDate.getMonth() === currentMonth && 
-               expenseDate.getFullYear() === currentYear;
+        return expenseDate.getMonth() === currentMonth &&
+          expenseDate.getFullYear() === currentYear;
       })
       .reduce((sum, expense) => sum + expense.amount, 0);
   }
@@ -1553,21 +1555,21 @@ getMonthlyExpensesForMonth(month: string): number {
       .reduce((sum, expense) => sum + expense.amount, 0);
   }
 
-  getUpcomingInvestmentDueDates(): Array<{investment: Investment, dueDate: Date, amount: number}> {
+  getUpcomingInvestmentDueDates(): Array<{ investment: Investment, dueDate: Date, amount: number }> {
     const today = new Date();
-    const upcomingDues: Array<{investment: Investment, dueDate: Date, amount: number}> = [];
-    
+    const upcomingDues: Array<{ investment: Investment, dueDate: Date, amount: number }> = [];
+
     this.investments.forEach(investment => {
       if (investment.type === 'RD' || investment.type === 'PPF') {
         const startDate = new Date(investment.startDate);
         const endDate = this.invEndDate(startDate, investment.durationMonths);
-        
+
         const nextDue = new Date(today.getFullYear(), today.getMonth(), startDate.getDate());
-        
+
         if (nextDue < today) {
           nextDue.setMonth(nextDue.getMonth() + 1);
         }
-        
+
         if (nextDue <= endDate) {
           upcomingDues.push({
             investment: investment,
@@ -1577,7 +1579,7 @@ getMonthlyExpensesForMonth(month: string): number {
         }
       }
     });
-    
+
     return upcomingDues.sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }
 
@@ -1587,13 +1589,13 @@ getMonthlyExpensesForMonth(month: string): number {
 
   getSourceInvestmentForExpense(expense: Expense): Investment | null {
     if (!this.isAutoGeneratedExpense(expense)) return null;
-    
+
     const parts = expense.id.split('_');
     if (parts.length >= 4) {
       const investmentIndex = parseInt(parts[parts.length - 1]);
       return this.investments[investmentIndex] || null;
     }
-    
+
     return null;
   }
 
@@ -1653,32 +1655,32 @@ getMonthlyExpensesForMonth(month: string): number {
     }
     try {
       const [year, month] = this.expenseFilterMonth.split('-').map(Number);
-      
+
       const firstDay = new Date(year, month - 1, 1);
       // Day of week: 0 = Sun, 1 = Mon, ..., 6 = Sat
-      const startDayOfWeek = firstDay.getDay(); 
+      const startDayOfWeek = firstDay.getDay();
       const totalDays = new Date(year, month, 0).getDate();
-      
+
       const daysArr: Array<{ day: number | null, dateStr: string | null, totalAmount: number, expenses: Expense[] }> = [];
-      
+
       // Pad empty cells for starting offset of the month grid
       for (let i = 0; i < startDayOfWeek; i++) {
         daysArr.push({ day: null, dateStr: null, totalAmount: 0, expenses: [] });
       }
-      
+
       // Generate actual days
       for (let day = 1; day <= totalDays; day++) {
         const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        
+
         const dayExpenses = this.expenses.filter(exp => {
           const expDate = new Date(exp.date);
           return expDate.getFullYear() === year &&
-                 (expDate.getMonth() + 1) === month &&
-                 expDate.getDate() === day;
+            (expDate.getMonth() + 1) === month &&
+            expDate.getDate() === day;
         });
-        
+
         const totalAmount = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
-        
+
         daysArr.push({
           day,
           dateStr,
@@ -1686,7 +1688,7 @@ getMonthlyExpensesForMonth(month: string): number {
           expenses: dayExpenses
         });
       }
-      
+
       this.calendarDays = daysArr;
     } catch (e) {
       console.error('Failed to generate calendar grid', e);
@@ -1697,17 +1699,17 @@ getMonthlyExpensesForMonth(month: string): number {
   // --- Search, Sort & Pagination getters ---
   get processedExpenses(): Expense[] {
     let list = this.hasCustomFilters ? [...this.filteredExpenses] : [...this.currentMonthExpenses];
-    
+
     // Search
     if (this.expenseSearchQuery.trim()) {
       const q = this.expenseSearchQuery.toLowerCase().trim();
-      list = list.filter(exp => 
-        exp.description.toLowerCase().includes(q) || 
+      list = list.filter(exp =>
+        exp.description.toLowerCase().includes(q) ||
         exp.category.toLowerCase().includes(q) ||
         (exp.paymentMethod && exp.paymentMethod.toLowerCase().includes(q))
       );
     }
-    
+
     // Sort
     list.sort((a, b) => {
       let comparison = 0;
@@ -1722,7 +1724,7 @@ getMonthlyExpensesForMonth(month: string): number {
       }
       return this.expenseSortOrder === 'asc' ? comparison : -comparison;
     });
-    
+
     return list;
   }
 
@@ -1763,14 +1765,14 @@ getMonthlyExpensesForMonth(month: string): number {
   getPreviousMonthTotal(): number {
     if (!this.expenseFilterMonth) return 0;
     const [year, month] = this.expenseFilterMonth.split('-').map(Number);
-    
+
     let prevYear = year;
     let prevMonth = month - 1;
     if (prevMonth === 0) {
       prevMonth = 12;
       prevYear = year - 1;
     }
-    
+
     const prevMonthStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
     return this.getMonthlyExpensesForMonth(prevMonthStr);
   }
@@ -1778,30 +1780,30 @@ getMonthlyExpensesForMonth(month: string): number {
   getMonthOverMonthPercentage(): { percent: number, isIncrease: boolean, displayStr: string } {
     const currentTotal = this.getTotalDisplayExpenses();
     const prevTotal = this.getPreviousMonthTotal();
-    
+
     if (prevTotal === 0) {
       return { percent: 0, isIncrease: false, displayStr: 'No previous month data' };
     }
-    
+
     const difference = currentTotal - prevTotal;
     const percent = Math.round((Math.abs(difference) / prevTotal) * 100);
     const isIncrease = difference > 0;
     const displayStr = `${isIncrease ? '↑' : '↓'} ${percent}% ${isIncrease ? 'more' : 'less'} than last month`;
-    
+
     return { percent, isIncrease, displayStr };
   }
 
   getDailyAverageSpend(): number {
     const list = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
     const total = list.reduce((sum, exp) => sum + exp.amount, 0);
-    
+
     // Calculate days elapsed in selected filter month
     const today = new Date();
     const currentYear = today.getFullYear();
     const currentMonth = today.getMonth() + 1;
-    
+
     let days = today.getDate(); // Default to today's date if current month
-    
+
     if (this.expenseFilterMonth) {
       const [year, month] = this.expenseFilterMonth.split('-').map(Number);
       if (year !== currentYear || month !== currentMonth) {
@@ -1809,7 +1811,7 @@ getMonthlyExpensesForMonth(month: string): number {
         days = new Date(year, month, 0).getDate();
       }
     }
-    
+
     return Math.round(total / Math.max(1, days));
   }
 }
