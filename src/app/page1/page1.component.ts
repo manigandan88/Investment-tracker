@@ -77,6 +77,21 @@ export class Page1Component implements OnInit {
   // NEW: Flag to track if custom filters are applied
   hasCustomFilters: boolean = false;
 
+  // NEW: Budget Caps properties
+  categoryBudgets: { [key: string]: number } = {};
+  editingBudgetCategory: string | null = null;
+  newBudgetCapValue: number = 0;
+
+  // NEW: Search, Sort, and Pagination properties
+  expenseSearchQuery: string = '';
+  expenseSortBy: string = 'date'; // 'date' | 'amount' | 'category' | 'description'
+  expenseSortOrder: 'asc' | 'desc' = 'desc';
+  expensePage: number = 1;
+  expenseItemsPerPage: number = 10;
+
+  // NEW: Calendar properties
+  calendarDays: Array<{ day: number | null, dateStr: string | null, totalAmount: number, expenses: Expense[] }> = [];
+
   // Income properties
   incomeSources = [
     'Salary',
@@ -404,6 +419,26 @@ export class Page1Component implements OnInit {
            this.getMonthlyAccountExpensesForMonth(this.selectedMonth);
   }
 
+  getIncomeUtilizationPercentage(): number {
+    const income = this.getMonthlyIncomeForMonth(this.selectedMonth);
+    if (!income || income <= 0) {
+      return 0;
+    }
+    const expenses = this.getMonthlyExpensesForMonth(this.selectedMonth);
+    return Math.min(100, Math.round((expenses / income) * 100));
+  }
+
+  getIncomeUtilizationStatus(): string {
+    const percentage = this.getIncomeUtilizationPercentage();
+    if (percentage <= 70) {
+      return 'safe';
+    } else if (percentage <= 90) {
+      return 'warning';
+    } else {
+      return 'danger';
+    }
+  }
+
   // Savings Methods (updated to use net available amount)
   getSavingsFromInvestments(): number {
     return this.investments
@@ -586,6 +621,7 @@ export class Page1Component implements OnInit {
       this.filterExpensesByMonth();
     } else {
       this.updateCurrentMonthSummary();
+      this.generateCalendar(); // NEW: Trigger calendar updates
     }
   }
 
@@ -603,6 +639,7 @@ export class Page1Component implements OnInit {
       // If no custom filters, use current month data
       this.filteredExpenses = this.currentMonthExpenses;
       this.updateFilteredExpenseSummary();
+      this.generateCalendar(); // NEW: Trigger calendar updates
       return;
     }
 
@@ -631,6 +668,7 @@ export class Page1Component implements OnInit {
     
     this.updateFilteredExpenseSummary();
     this.saveFilterSettings();
+    this.generateCalendar(); // NEW: Trigger calendar updates
   }
 
   updateFilteredExpenseSummary() {
@@ -892,6 +930,7 @@ getMonthlyExpensesForMonth(month: string): number {
       expenses: this.expenses,
       incomes: this.incomes,
       savingsHistory: this.savingsHistory,
+      categoryBudgets: this.categoryBudgets, // NEW: Save category budgets
       filterSettings: {
         showFilters: this.showFilters,
         expenseFilterMonth: this.expenseFilterMonth,
@@ -968,6 +1007,13 @@ getMonthlyExpensesForMonth(month: string): number {
           this.savingsHistory = parsed.savingsHistory;
         }
 
+        // Load category budgets - NEW
+        if (parsed.categoryBudgets) {
+          this.categoryBudgets = parsed.categoryBudgets;
+        } else {
+          this.initDefaultBudgets();
+        }
+
         // Load filter settings (updated)
         if (parsed.filterSettings) {
           this.showFilters = parsed.filterSettings.showFilters || false;
@@ -981,6 +1027,8 @@ getMonthlyExpensesForMonth(month: string): number {
       } catch (e) {
         console.error('Failed to load saved data', e);
       }
+    } else {
+      this.initDefaultBudgets(); // Init default budgets if no saved data
     }
   }
 
@@ -1457,5 +1505,221 @@ getMonthlyExpensesForMonth(month: string): number {
     }
     
     return null;
+  }
+
+  // ==========================================
+  // NEW ADVANCED EXPENSE FEATURES
+  // ==========================================
+
+  initDefaultBudgets() {
+    this.categoryBudgets = {};
+    this.expenseCategories.forEach(cat => {
+      const trimCat = cat.trim();
+      if (trimCat === 'Food & Dining') this.categoryBudgets[cat] = 5000;
+      else if (trimCat === 'Petrol') this.categoryBudgets[cat] = 3000;
+      else if (trimCat === 'Tea & Coffee') this.categoryBudgets[cat] = 1000;
+      else if (trimCat === 'Shopping') this.categoryBudgets[cat] = 4000;
+      else if (trimCat === 'Bills & Utilities') this.categoryBudgets[cat] = 10000;
+      else if (trimCat === 'Rent/EMI') this.categoryBudgets[cat] = 20000;
+      else if (trimCat === 'Others') this.categoryBudgets[cat] = 2000;
+      else this.categoryBudgets[cat] = 0; // 0 means no cap
+    });
+  }
+
+  getCategorySpent(category: string): number {
+    const list = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return list
+      .filter(exp => exp.category.trim() === category.trim())
+      .reduce((sum, exp) => sum + exp.amount, 0);
+  }
+
+  getBudgetRatio(category: string): number {
+    const cap = this.categoryBudgets[category] || 0;
+    if (cap === 0) return 0;
+    return (this.getCategorySpent(category) / cap) * 100;
+  }
+
+  saveBudgetCap(category: string, value: number) {
+    if (value >= 0) {
+      this.categoryBudgets[category] = value;
+      this.saveToLocal();
+      this.editingBudgetCategory = null;
+    }
+  }
+
+  startEditBudgetCap(category: string) {
+    this.editingBudgetCategory = category;
+    this.newBudgetCapValue = this.categoryBudgets[category] || 0;
+  }
+
+  cancelEditBudgetCap() {
+    this.editingBudgetCategory = null;
+  }
+
+  generateCalendar() {
+    if (!this.expenseFilterMonth) {
+      this.calendarDays = [];
+      return;
+    }
+    try {
+      const [year, month] = this.expenseFilterMonth.split('-').map(Number);
+      
+      const firstDay = new Date(year, month - 1, 1);
+      // Day of week: 0 = Sun, 1 = Mon, ..., 6 = Sat
+      const startDayOfWeek = firstDay.getDay(); 
+      const totalDays = new Date(year, month, 0).getDate();
+      
+      const daysArr: Array<{ day: number | null, dateStr: string | null, totalAmount: number, expenses: Expense[] }> = [];
+      
+      // Pad empty cells for starting offset of the month grid
+      for (let i = 0; i < startDayOfWeek; i++) {
+        daysArr.push({ day: null, dateStr: null, totalAmount: 0, expenses: [] });
+      }
+      
+      // Generate actual days
+      for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        
+        const dayExpenses = this.expenses.filter(exp => {
+          const expDate = new Date(exp.date);
+          return expDate.getFullYear() === year &&
+                 (expDate.getMonth() + 1) === month &&
+                 expDate.getDate() === day;
+        });
+        
+        const totalAmount = dayExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+        
+        daysArr.push({
+          day,
+          dateStr,
+          totalAmount,
+          expenses: dayExpenses
+        });
+      }
+      
+      this.calendarDays = daysArr;
+    } catch (e) {
+      console.error('Failed to generate calendar grid', e);
+      this.calendarDays = [];
+    }
+  }
+
+  // --- Search, Sort & Pagination getters ---
+  get processedExpenses(): Expense[] {
+    let list = this.hasCustomFilters ? [...this.filteredExpenses] : [...this.currentMonthExpenses];
+    
+    // Search
+    if (this.expenseSearchQuery.trim()) {
+      const q = this.expenseSearchQuery.toLowerCase().trim();
+      list = list.filter(exp => 
+        exp.description.toLowerCase().includes(q) || 
+        exp.category.toLowerCase().includes(q) ||
+        (exp.paymentMethod && exp.paymentMethod.toLowerCase().includes(q))
+      );
+    }
+    
+    // Sort
+    list.sort((a, b) => {
+      let comparison = 0;
+      if (this.expenseSortBy === 'date') {
+        comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+      } else if (this.expenseSortBy === 'amount') {
+        comparison = a.amount - b.amount;
+      } else if (this.expenseSortBy === 'category') {
+        comparison = a.category.localeCompare(b.category);
+      } else if (this.expenseSortBy === 'description') {
+        comparison = a.description.localeCompare(b.description);
+      }
+      return this.expenseSortOrder === 'asc' ? comparison : -comparison;
+    });
+    
+    return list;
+  }
+
+  get paginatedExpenses(): Expense[] {
+    const list = this.processedExpenses;
+    const startIndex = (this.expensePage - 1) * this.expenseItemsPerPage;
+    return list.slice(startIndex, startIndex + this.expenseItemsPerPage);
+  }
+
+  get totalPages(): number {
+    return Math.max(1, Math.ceil(this.processedExpenses.length / this.expenseItemsPerPage));
+  }
+
+  changePage(page: number) {
+    if (page >= 1 && page <= this.totalPages) {
+      this.expensePage = page;
+    }
+  }
+
+  toggleSort(field: string) {
+    if (this.expenseSortBy === field) {
+      this.expenseSortOrder = this.expenseSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+      this.expenseSortBy = field;
+      this.expenseSortOrder = 'desc';
+    }
+    this.expensePage = 1; // Reset page
+  }
+
+  // --- Expense Trends & analytics getters ---
+  get topFiveExpenses(): Expense[] {
+    const baseList = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    return [...baseList]
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+  }
+
+  getPreviousMonthTotal(): number {
+    if (!this.expenseFilterMonth) return 0;
+    const [year, month] = this.expenseFilterMonth.split('-').map(Number);
+    
+    let prevYear = year;
+    let prevMonth = month - 1;
+    if (prevMonth === 0) {
+      prevMonth = 12;
+      prevYear = year - 1;
+    }
+    
+    const prevMonthStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}`;
+    return this.getMonthlyExpensesForMonth(prevMonthStr);
+  }
+
+  getMonthOverMonthPercentage(): { percent: number, isIncrease: boolean, displayStr: string } {
+    const currentTotal = this.getTotalDisplayExpenses();
+    const prevTotal = this.getPreviousMonthTotal();
+    
+    if (prevTotal === 0) {
+      return { percent: 0, isIncrease: false, displayStr: 'No previous month data' };
+    }
+    
+    const difference = currentTotal - prevTotal;
+    const percent = Math.round((Math.abs(difference) / prevTotal) * 100);
+    const isIncrease = difference > 0;
+    const displayStr = `${isIncrease ? '↑' : '↓'} ${percent}% ${isIncrease ? 'more' : 'less'} than last month`;
+    
+    return { percent, isIncrease, displayStr };
+  }
+
+  getDailyAverageSpend(): number {
+    const list = this.hasCustomFilters ? this.filteredExpenses : this.currentMonthExpenses;
+    const total = list.reduce((sum, exp) => sum + exp.amount, 0);
+    
+    // Calculate days elapsed in selected filter month
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+    
+    let days = today.getDate(); // Default to today's date if current month
+    
+    if (this.expenseFilterMonth) {
+      const [year, month] = this.expenseFilterMonth.split('-').map(Number);
+      if (year !== currentYear || month !== currentMonth) {
+        // If it's a historical month, divide by total days in that month
+        days = new Date(year, month, 0).getDate();
+      }
+    }
+    
+    return Math.round(total / Math.max(1, days));
   }
 }

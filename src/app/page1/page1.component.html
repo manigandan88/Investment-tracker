@@ -466,101 +466,150 @@
       </div>
     </div>
 
-    <!-- Filtered Expense Summary -->
-    <div *ngIf="showFilters && filteredExpenses.length > 0" class="filtered-results">
-      <div class="filtered-header">
-        <h3>
-          Expense Details for {{ getMonthDisplay(expenseFilterMonth) }}
-          <span *ngIf="expenseFilterCategory" class="filter-tag">{{ expenseFilterCategory }}</span>
-          <span *ngIf="expenseFilterType" class="filter-tag">{{ expenseFilterType === 'monthly' ? 'Monthly' : 'One-time' }}</span>
-          <span *ngIf="expenseFilterPayment" class="filter-tag payment-tag" [class]="expenseFilterPayment">
-            {{ expenseFilterPayment === 'cash' ? '💵 Cash' : (expenseFilterPayment === 'account' ? '🏦 Account' : '💰 Savings') }}
-          </span>
-        </h3>
-      </div>
+    <!-- ================= NEW ADVANCED EXPENSE FEATURES PANEL ================= -->
+    <div *ngIf="expenses.length > 0">
       
-      <div class="expense-stats">
-        <div class="stat-item">
-          <span class="stat-label">Total Filtered Expenses:</span>
-          <span class="stat-value">₹{{ getFilteredExpenseTotal() | number : "1.0-0" }}</span>
+      <!-- 1. Trends Row -->
+      <div class="trends-row">
+        <!-- Daily Spend Average -->
+        <div class="trend-card daily-avg">
+          <span class="trend-icon">📅</span>
+          <div class="trend-info">
+            <h5>Daily Average</h5>
+            <span class="trend-value">₹{{ getDailyAverageSpend() | number: '1.0-0' }}</span>
+            <span class="trend-caption">Calculated for active month</span>
+          </div>
         </div>
-        <div class="stat-item">
-          <span class="stat-label">Cash Expenses:</span>
-          <span class="stat-value cash">₹{{ getFilteredCashExpenses() | number : "1.0-0" }}</span>
+        
+        <!-- Month-over-Month Trend -->
+        <div class="trend-card mom-trend" [class.up]="getMonthOverMonthPercentage().isIncrease" [class.down]="!getMonthOverMonthPercentage().isIncrease">
+          <span class="trend-icon">📈</span>
+          <div class="trend-info">
+            <h5>MoM Trend</h5>
+            <span class="trend-value">{{ getMonthOverMonthPercentage().isIncrease ? '▲' : '▼' }} {{ getMonthOverMonthPercentage().percent }}%</span>
+            <span class="trend-caption">{{ getMonthOverMonthPercentage().displayStr }}</span>
+          </div>
         </div>
-        <div class="stat-item">
-          <span class="stat-label">Account Expenses:</span>
-          <span class="stat-value account">₹{{ getFilteredAccountExpenses() | number : "1.0-0" }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Savings Expenses:</span>
-          <span class="stat-value savings">₹{{ getFilteredSavingsExpenses() | number : "1.0-0" }}</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-label">Number of Transactions:</span>
-          <span class="stat-value">{{ filteredExpenses.length }}</span>
-        </div>
-      </div>
-
-      <div class="table-responsive">
-        <table border="1" cellpadding="8">
-          <thead>
-            <tr>
-              <th>S.No</th>
-              <th>Category</th>
-              <th>Description</th>
-              <th>Amount</th>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Payment Method</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let expense of filteredExpenses; let i = index" 
-                [class.cash-payment]="expense.paymentMethod === 'cash'" 
-                [class.account-payment]="expense.paymentMethod === 'account'"
-                [class.savings-payment]="expense.paymentMethod === 'savings'">
-              <td>{{ i + 1 }}</td>
-              <td>{{ expense.category }}</td>
-              <td>{{ expense.description }}</td>
-              <td class="currency">₹{{ expense.amount | number : "1.0-0" }}</td>
-              <td>{{ expense.date | date : "dd/MM/yyyy" }}</td>
-              <td>
-                <span class="expense-type" [class]="expense.type">
-                  {{ expense.type === 'monthly' ? 'Monthly' : 'One-time' }}
-                </span>
-              </td>
-              <td>
-                <span class="payment-method" [class]="expense.paymentMethod">
-                  {{ expense.paymentMethod === 'cash' ? '💵 Cash' : '🏦 Account' }}
-                </span>
-              </td>
-              <td>
-                <button class="delete-btn" (click)="deleteExpense(expense.id)">Delete</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Category wise breakdown for filtered data -->
-      <div class="summary-section" *ngIf="filteredExpensesByCategory && objectKeys(filteredExpensesByCategory).length > 0">
-        <h4>Category-wise Breakdown (Filtered)</h4>
-        <div class="category-breakdown">
-          <div class="category-item" *ngFor="let key of objectKeys(filteredExpensesByCategory)">
-            <span class="category-name">{{ key }}:</span>
-            <span class="category-amount">₹{{ filteredExpensesByCategory[key] | number : "1.0-0" }}</span>
+        
+        <!-- Top Spend -->
+        <div class="trend-card top-spend" *ngIf="topFiveExpenses.length > 0">
+          <span class="trend-icon">🏆</span>
+          <div class="trend-info">
+            <h5>Top Spend</h5>
+            <span class="trend-value">₹{{ topFiveExpenses[0].amount | number: '1.0-0' }}</span>
+            <span class="trend-caption">{{ topFiveExpenses[0].description }} ({{ topFiveExpenses[0].category }})</span>
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- All Expenses Summary -->
-    <div *ngIf="expenses.length > 0" class="all-expenses-section">
-      <h3>All Expenses Summary</h3>
-      
-      <!-- Payment Method Overview -->
+      <!-- 2. Interactive Calendar Panel & Budget Caps Panel Side-by-Side Grid -->
+      <div class="dashboard-grid">
+        
+        <!-- Monthly Expense Calendar -->
+        <div class="calendar-card" *ngIf="expenseFilterMonth">
+          <div class="calendar-header-panel">
+            <h4>🗓️ Expense Calendar ({{ getMonthDisplay(expenseFilterMonth) }})</h4>
+            <small class="text-muted">Hover days for transaction details</small>
+          </div>
+          
+          <div class="calendar-grid-container">
+            <div class="calendar-weekday-header">Sun</div>
+            <div class="calendar-weekday-header">Mon</div>
+            <div class="calendar-weekday-header">Tue</div>
+            <div class="calendar-weekday-header">Wed</div>
+            <div class="calendar-weekday-header">Thu</div>
+            <div class="calendar-weekday-header">Fri</div>
+            <div class="calendar-weekday-header">Sat</div>
+            
+            <div *ngFor="let cell of calendarDays" 
+                 class="calendar-day-cell"
+                 [class.empty-day]="!cell.day"
+                 [class.has-expenses]="cell.totalAmount > 0">
+              <div class="cell-day-num" *ngIf="cell.day">{{ cell.day }}</div>
+              <div class="cell-day-amount" *ngIf="cell.day && cell.totalAmount > 0">
+                ₹{{ cell.totalAmount | number: '1.0-0' }}
+              </div>
+              
+              <!-- Hover tooltip -->
+              <div class="cell-tooltip" *ngIf="cell.day && cell.expenses.length > 0">
+                <div class="tooltip-title">📅 {{ cell.day }} {{ getMonthDisplay(expenseFilterMonth) }}</div>
+                <div class="tooltip-items-list">
+                  <div class="tooltip-item" *ngFor="let exp of cell.expenses">
+                    <span class="item-cat">{{ exp.category }}:</span>
+                    <span class="item-desc">{{ exp.description }}</span>
+                    <span class="item-amt">₹{{ exp.amount }}</span>
+                  </div>
+                </div>
+                <div class="tooltip-total">Total: ₹{{ cell.totalAmount | number: '1.0-0' }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category Budget Caps & Progress Bars -->
+        <div class="budget-caps-card">
+          <div class="caps-header">
+            <h4>🎯 Category Budget Limits & Usage</h4>
+            <button type="button" class="btn-caps-reset" (click)="initDefaultBudgets()">Reset Defaults</button>
+          </div>
+          
+          <div class="caps-list-container">
+            <div class="cap-progress-item" *ngFor="let cat of expenseCategories">
+              <div class="cap-progress-info">
+                <span class="cap-cat-name">{{ cat }}</span>
+                
+                <div class="cap-edit-wrapper">
+                  <!-- Normal View -->
+                  <div *ngIf="editingBudgetCategory !== cat" class="cap-amt-display">
+                    <span class="cap-spent">₹{{ getCategorySpent(cat) | number: '1.0-0' }}</span>
+                    <span class="cap-divider">/</span>
+                    <span class="cap-limit" (click)="startEditBudgetCap(cat)" title="Click to edit budget limit">
+                      {{ categoryBudgets[cat] > 0 ? '₹' + (categoryBudgets[cat] | number: '1.0-0') : 'Set Limit ✏️' }}
+                    </span>
+                  </div>
+                  
+                  <!-- Edit View -->
+                  <div *ngIf="editingBudgetCategory === cat" class="cap-amt-edit">
+                    <input type="number" [(ngModel)]="newBudgetCapValue" class="edit-cap-input" min="0" />
+                    <button type="button" class="btn-cap-save" (click)="saveBudgetCap(cat, newBudgetCapValue)">💾</button>
+                    <button type="button" class="btn-cap-cancel" (click)="cancelEditBudgetCap()">❌</button>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Progress Bar track -->
+              <div class="cap-progress-track" *ngIf="categoryBudgets[cat] > 0">
+                <div class="cap-progress-bar"
+                     [style.width.%]="getBudgetRatio(cat) > 100 ? 100 : getBudgetRatio(cat)"
+                     [class.safe]="getBudgetRatio(cat) <= 70"
+                     [class.warning]="getBudgetRatio(cat) > 70 && getBudgetRatio(cat) <= 90"
+                     [class.danger]="getBudgetRatio(cat) > 90">
+                </div>
+              </div>
+              <div class="cap-progress-percent" *ngIf="categoryBudgets[cat] > 0">
+                {{ getBudgetRatio(cat) | number: '1.0-0' }}% spent of ₹{{ categoryBudgets[cat] | number: '1.0-0' }} limit
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Top Spends List Showcase -->
+      <div class="top-spends-section" *ngIf="topFiveExpenses.length > 0">
+        <h4>🏆 Top Spends this Month</h4>
+        <div class="top-spends-grid">
+          <div class="top-spend-item" *ngFor="let exp of topFiveExpenses; let i = index">
+            <span class="rank-badge">#{{ i + 1 }}</span>
+            <div class="spend-info">
+              <span class="spend-desc">{{ exp.description }}</span>
+              <span class="spend-cat">{{ exp.category }}</span>
+            </div>
+            <span class="spend-amt">₹{{ exp.amount | number: '1.0-0' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4. Payment Method Overview Cards -->
       <div class="payment-overview">
         <div class="payment-summary-grid">
           <div class="payment-summary-item cash">
@@ -581,69 +630,101 @@
         </div>
       </div>
 
-      <div class="table-responsive">
-        <table border="1" cellpadding="8">
-          <thead>
-            <tr>
-              <th>S.No</th>
-              <th>Category</th>
-              <th>Description</th>
-              <th>Amount</th>
-              <th>Date</th>
-              <th>Type</th>
-              <th>Payment Method</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let expense of currentMonthExpenses; let i = index" 
-                [class.cash-payment]="expense.paymentMethod === 'cash'" 
-                [class.account-payment]="expense.paymentMethod === 'account'"
-                [class.savings-payment]="expense.paymentMethod === 'savings'">
-              <td>{{ i + 1 }}</td>
-              <td>{{ expense.category }}</td>
-              <td>{{ expense.description }}</td>
-              <td class="currency">₹{{ expense.amount | number : "1.0-0" }}</td>
-              <td>{{ expense.date | date : "dd/MM/yyyy" }}</td>
-              <td>
-                <span class="expense-type" [class]="expense.type">
-                  {{ expense.type === 'monthly' ? 'Monthly' : 'One-time' }}
-                </span>
-              </td>
-              <td>
-                <span class="payment-method" [class]="expense.paymentMethod">
-                  {{ expense.paymentMethod === 'cash' ? '💵 Cash' : (expense.paymentMethod === 'account' ? '🏦 Account' : '💰 Savings') }}
-                </span>
-              </td>
-              <td>
-                <button class="delete-btn" (click)="deleteExpense(expense.id)">Delete</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- 5. Unified Expense Table with Search, Sort, and Pagination -->
+      <div class="unified-table-section">
+        <div class="table-header-controls">
+          <h3>Expense Log Details</h3>
+          
+          <!-- Search box -->
+          <div class="search-box-wrapper">
+            <input type="text" 
+                   [(ngModel)]="expenseSearchQuery" 
+                   (ngModelChange)="expensePage = 1"
+                   placeholder="🔍 Search description, category, payment method..." 
+                   class="search-input" />
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table border="1" cellpadding="8">
+            <thead>
+              <tr>
+                <th>S.No</th>
+                <th (click)="toggleSort('category')" class="sortable-header">Category <span *ngIf="expenseSortBy === 'category'">{{ expenseSortOrder === 'asc' ? '▲' : '▼' }}</span></th>
+                <th (click)="toggleSort('description')" class="sortable-header">Description <span *ngIf="expenseSortBy === 'description'">{{ expenseSortOrder === 'asc' ? '▲' : '▼' }}</span></th>
+                <th (click)="toggleSort('amount')" class="sortable-header">Amount <span *ngIf="expenseSortBy === 'amount'">{{ expenseSortOrder === 'asc' ? '▲' : '▼' }}</span></th>
+                <th (click)="toggleSort('date')" class="sortable-header">Date <span *ngIf="expenseSortBy === 'date'">{{ expenseSortOrder === 'asc' ? '▲' : '▼' }}</span></th>
+                <th>Type</th>
+                <th>Payment Method</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let expense of paginatedExpenses; let i = index" 
+                  [class.cash-payment]="expense.paymentMethod === 'cash'" 
+                  [class.account-payment]="expense.paymentMethod === 'account'"
+                  [class.savings-payment]="expense.paymentMethod === 'savings'">
+                <td>{{ (expensePage - 1) * expenseItemsPerPage + i + 1 }}</td>
+                <td>{{ expense.category }}</td>
+                <td>{{ expense.description }}</td>
+                <td class="currency">₹{{ expense.amount | number : "1.0-0" }}</td>
+                <td>{{ expense.date | date : "dd/MM/yyyy" }}</td>
+                <td>
+                  <span class="expense-type" [class]="expense.type">
+                    {{ expense.type === 'monthly' ? 'Monthly' : 'One-time' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="payment-method" [class]="expense.paymentMethod">
+                    {{ expense.paymentMethod === 'cash' ? '💵 Cash' : (expense.paymentMethod === 'account' ? '🏦 Account' : '💰 Savings') }}
+                  </span>
+                </td>
+                <td>
+                  <button class="delete-btn" (click)="deleteExpense(expense.id)">Delete</button>
+                </td>
+              </tr>
+              <tr *ngIf="paginatedExpenses.length === 0">
+                <td colspan="8" class="text-center no-results">No expenses match your search or filters.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls -->
+        <div class="pagination-controls" *ngIf="totalPages > 1">
+          <button class="btn-page" [disabled]="expensePage === 1" (click)="changePage(1)">« First</button>
+          <button class="btn-page" [disabled]="expensePage === 1" (click)="changePage(expensePage - 1)">‹ Prev</button>
+          
+          <span class="page-indicator">Page {{ expensePage }} of {{ totalPages }}</span>
+          
+          <button class="btn-page" [disabled]="expensePage === totalPages" (click)="changePage(expensePage + 1)">Next ›</button>
+          <button class="btn-page" [disabled]="expensePage === totalPages" (click)="changePage(totalPages)">Last »</button>
+        </div>
       </div>
+
+      <!-- 6. Category breakdown list & Grand Totals -->
       <div class="summary-section">
         <h4>Expense Summary by Category</h4>
         <div class="category-breakdown">
-          <div class="category-item" *ngFor="let key of objectKeys(expensesByCategoryThisMonth)">
+          <div class="category-item" *ngFor="let key of objectKeys(displayExpensesByCategory)">
             <span class="category-name">{{ key }}:</span>
-            <span class="category-amount">₹{{ expensesByCategoryThisMonth[key] | number : "1.0-0" }}</span>
+            <span class="category-amount">₹{{ displayExpensesByCategory[key] | number : "1.0-0" }}</span>
           </div>
         </div>
         <div class="totals">
-          <h4>Total Expenses</h4>
+          <h4>Total Expenses for {{ getMonthDisplay(expenseFilterMonth) }}</h4>
         
           <div class="total-item">
             <strong>Total One-time Expenses:</strong>
-            ₹{{ getTotalOneTimeExpenses() | number : "1.0-0" }}
+            ₹{{ getTotalDisplayOneTimeExpenses() | number : "1.0-0" }}
           </div>
           <div class="total-item">
             <strong>Total Monthly Expenses:</strong>
-            ₹{{ getTotalMonthlyExpenses() | number : "1.0-0" }}
+            ₹{{ getTotalDisplayMonthlyExpenses() | number : "1.0-0" }}
           </div>
           <div class="total-item">
             <strong class="red">Total All Expenses:</strong>
-            ₹{{ getTotalExpenses() | number : "1.0-0" }}
+            <span class="red">₹{{ getTotalDisplayExpenses() | number : "1.0-0" }}</span>
           </div>
         </div>
       </div>
@@ -799,6 +880,35 @@
             name="selectedMonth"
             (ngModelChange)="updateBudgetSummary()"
           />
+        </div>
+      </div>
+
+      <!-- Income Utilization Gauge -->
+      <div class="income-utilization-card" *ngIf="getMonthlyIncomeForMonth(selectedMonth) > 0">
+        <div class="utilization-header">
+          <h5>📊 Income Utilization Gauge</h5>
+          <span class="utilization-percentage" [class]="getIncomeUtilizationStatus()">
+            {{ getIncomeUtilizationPercentage() }}% Consumed
+          </span>
+        </div>
+        
+        <div class="utilization-bar-container">
+          <div class="utilization-bar-fill" 
+               [style.width.%]="getIncomeUtilizationPercentage()" 
+               [class]="getIncomeUtilizationStatus()">
+          </div>
+        </div>
+        
+        <div class="utilization-caption">
+          <span *ngIf="getIncomeUtilizationStatus() === 'safe'">
+            🟢 <strong>Healthy Budget:</strong> Excellent! You're saving at least 30% of your income. Keep it up!
+          </span>
+          <span *ngIf="getIncomeUtilizationStatus() === 'warning'">
+            🟡 <strong>Moderate spending:</strong> You are using a significant portion of your income. Watch out for miscellaneous costs.
+          </span>
+          <span *ngIf="getIncomeUtilizationStatus() === 'danger'">
+            🔴 <strong>High Alert:</strong> Over 90% of your income is consumed. Consider minimizing account/cash expenses.
+          </span>
         </div>
       </div>
 
@@ -960,69 +1070,7 @@
           </canvas>
         </div>
 
-        <!-- Budget Analytics -->
-        <div class="budget-analytics">
-          <h4>📊 Budget Analytics</h4>
-          
-          <div class="analytics-grid">
-            <div class="analytics-item expense-ratio">
-              <h6>Total Expense Ratio</h6>
-              <div class="ratio-value">
-                {{ ((getMonthlyExpensesForMonth(selectedMonth) / getMonthlyIncomeForMonth(selectedMonth)) * 100) | number : "1.0-0" }}%
-              </div>
-              <small>of total income</small>
-            </div>
-            
-            <div class="analytics-item account-ratio">
-              <h6>Account Expense Ratio</h6>
-              <div class="ratio-value">
-                {{ ((getMonthlyAccountExpensesForMonth(selectedMonth) / getMonthlyIncomeForMonth(selectedMonth)) * 100) | number : "1.0-0" }}%
-              </div>
-              <small>of total income</small>
-            </div>
-            
-            <div class="analytics-item investment-ratio">
-              <h6>Investment Ratio</h6>
-              <div class="ratio-value">
-                {{ ((getMonthlyInvestmentsForMonth(selectedMonth) / getMonthlyIncomeForMonth(selectedMonth)) * 100) | number : "1.0-0" }}%
-              </div>
-              <small>of total income</small>
-            </div>
-            
-            <div class="analytics-item savings-ratio">
-              <h6>Net Savings Ratio</h6>
-              <div class="ratio-value" [class.negative]="getNetAvailableAmount() < 0">
-                {{ ((getNetAvailableAmount() / getMonthlyIncomeForMonth(selectedMonth)) * 100) | number : "1.0-0" }}%
-              </div>
-              <small>of total income</small>
-            </div>
-            
-            <div class="analytics-item financial-health">
-              <h6>Financial Health</h6>
-              <div class="health-indicator">
-                <span 
-                  class="health-status"
-                  [class.excellent]="getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2"
-                  [class.good]="getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.1 && getNetAvailableAmount() < getMonthlyIncomeForMonth(selectedMonth) * 0.2"
-                  [class.average]="getNetAvailableAmount() >= 0 && getNetAvailableAmount() < getMonthlyIncomeForMonth(selectedMonth) * 0.1"
-                  [class.poor]="getNetAvailableAmount() < 0">
-                  {{ 
-                    getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2 ? 'Excellent' :
-                    getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.1 ? 'Good' :
-                    getNetAvailableAmount() >= 0 ? 'Average' : 'Poor'
-                  }}
-                </span>
-              </div>
-              <small>
-                {{ 
-                  getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.2 ? 'Great savings rate!' :
-                  getNetAvailableAmount() >= getMonthlyIncomeForMonth(selectedMonth) * 0.1 ? 'Good financial discipline' :
-                  getNetAvailableAmount() >= 0 ? 'Room for improvement' : 'Account deficit'
-                }}
-              </small>
-            </div>
-          </div>
-        </div>
+
 
         <!-- Financial Tips -->
         <div class="financial-tips">
@@ -1053,33 +1101,7 @@
       </div>
     </div>
 
-    <!-- Auto-Savings Information -->
-    <div class="auto-savings-info">
-      <h4>🤖 Auto-Savings Information</h4>
-      <div class="info-grid">
-        <div class="info-item">
-          <span class="info-icon">⚡</span>
-          <div class="info-content">
-            <strong>Automatic Savings</strong>
-            <p>Your net available amount (income minus account expenses) is automatically added to savings when you change income or expenses.</p>
-          </div>
-        </div>
-        <div class="info-item">
-          <span class="info-icon">🔄</span>
-          <div class="info-content">
-            <strong>Real-time Updates</strong>
-            <p>Total savings update instantly as your budget changes throughout the month.</p>
-          </div>
-        </div>
-        <div class="info-item">
-          <span class="info-icon">📊</span>
-          <div class="info-content">
-            <strong>Smart Calculation</strong>
-            <p>Only account-based expenses reduce your available balance. Cash expenses are tracked separately.</p>
-          </div>
-        </div>
-      </div>
-    </div>
+
   </div>
 </div>
 </div>
